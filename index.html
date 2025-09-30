@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://unpkg.com; connect-src 'self' wss: https:;">
+    <title>Bitchat Nostr Activity Visualizer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #8B5CF6 0%, #F59E0B 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            font-weight: 400;
+            letter-spacing: -0.01em;
+        }
+        
+        .main-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .map-container {
+            flex: 1;
+            background: #f0f0f0;
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .activity-container {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+        
+        .container {
+            max-width: none;
+            margin: 0;
+        }
+        
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.2rem;
+            font-weight: 700;
+            font-family: 'Space Grotesk', sans-serif;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .activity-item {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .activity-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+        
+        .activity-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #8B5CF6, #F59E0B);
+        }
+        
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .activity-type {
+            font-weight: 600;
+            font-family: 'Space Grotesk', sans-serif;
+            color: #2c3e50;
+            font-size: 0.95rem;
+            background: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid #e9ecef;
+            letter-spacing: -0.01em;
+        }
+        
+        .activity-time {
+            color: #6c757d;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+        
+        
+        .activity-content {
+            line-height: 1.6;
+            color: #2c3e50;
+            font-size: 0.95rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            font-weight: 400;
+            letter-spacing: -0.005em;
+            margin: 8px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-style: italic;
+            font-size: 1.1rem;
+            padding: 40px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .error {
+            color: #DC2626;
+            background: rgba(220, 38, 38, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            text-align: center;
+        }
+        
+        .stats {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            color: white;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 1000;
+            min-width: 250px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .stats:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .stats h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .stats p {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+
+        .stats-section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .stats-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .relay-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+            padding: 4px 0;
+            font-size: 0.85rem;
+        }
+
+        .relay-status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .relay-connected {
+            background: #10B981;
+            box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+        }
+
+        .relay-connecting {
+            background: #F59E0B;
+            animation: pulse 2s infinite;
+        }
+
+        .relay-disconnected {
+            background: #EF4444;
+        }
+
+        .relay-name {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .relay-stats {
+            margin-left: auto;
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+        
+        .map-marker {
+            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            border: 3px solid white;
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .map-marker:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.6);
+        }
+        
+        .map-popup {
+            max-width: 250px;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .map-popup .activity-title {
+            font-weight: 600;
+            color: #8B5CF6;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .popup-content {
+            font-size: 0.9rem;
+            margin: 5px 0;
+        }
+        
+        .popup-time {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        
+        .popup-location {
+            color: #8B5CF6;
+            font-weight: 500;
+            margin-top: 6px;
+            font-size: 0.8rem;
+            border-top: 1px solid rgba(139, 92, 246, 0.2);
+            padding-top: 4px;
+        }
+
+        .live-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .activity-new {
+            animation: slideInFromTop 0.5s ease-out;
+            border-left: 4px solid #10B981;
+        }
+
+        @keyframes slideInFromTop {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .bitchat-indicator {
+            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+        }
+
+        .geohash-tag {
+            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Space Grotesk', sans-serif;
+            margin: 0 3px;
+            letter-spacing: -0.01em;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
+            display: inline-block;
+        }
+
+        .geohash-tag:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 6px rgba(139, 92, 246, 0.4);
+        }
+
+        .bitchat-packet {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #6c757d;
+            word-break: break-all;
+        }
+
+        .encrypted-content {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 8px;
+            margin: 8px 0;
+            font-style: italic;
+            color: #856404;
+        }
+
+        .filter-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .filter-input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-input-group label {
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            min-width: 120px;
+        }
+
+        .filter-input-group input {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
+            font-size: 0.9rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .filter-input-group input:focus {
+            outline: none;
+            border-color: #8B5CF6;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+        }
+
+        .clear-filter-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+
+        .clear-filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+
+        .filter-info {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .filter-options {
+            margin: 12px 0;
+        }
+
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #8B5CF6;
+            cursor: pointer;
+        }
+
+        .toggle-text {
+            font-weight: 500;
+        }
+
+        .load-more-container {
+            text-align: center;
+            margin: 20px 0;
+            padding: 20px;
+        }
+
+        .load-more-btn {
+            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        .load-more-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .load-more-btn:active {
+            transform: translateY(0);
+        }
+
+        .load-more-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .activity-type-indicator {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .small-kind-badge, .small-bitchat-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 4px;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .map-container {
+                height: 40vh;
+                min-height: 200px;
+            }
+            
+            .activity-container {
+                height: 60vh;
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .activity-item {
+                padding: 15px;
+            }
+            
+            .activity-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        <div class="activity-container">
+            <div class="container">
+                <h1>Bitchat Nostr Activity</h1>
+                <div class="activity-type-indicator">
+                    <span class="small-kind-badge">Kind 20000</span>
+                    <span class="small-bitchat-badge">Bitchat</span>
+                </div>
+                
+                <!-- Geohash Filter -->
+                <div class="filter-container">
+                    <div class="filter-input-group">
+                        <label for="geohashFilter">Filter by Geohash:</label>
+                        <input type="text" id="geohashFilter" placeholder="e.g., ey, 9q8yy, etc." />
+                        <button id="clearFilter" class="clear-filter-btn">Clear</button>
+                    </div>
+                    <div class="filter-options">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="exclude9q" />
+                            <span class="toggle-text">Exclude 9q area (very active)</span>
+                        </label>
+                    </div>
+                    <div class="filter-info">
+                        <span id="filterStatus">Showing all geohashes</span>
+                    </div>
+                </div>
+                
+                <div id="activityContainer">
+                    <div class="loading">Loading Bitchat activity from Nostr relays...</div>
+                </div>
+                
+                <!-- Load More Button -->
+                <div id="loadMoreContainer" class="load-more-container" style="display: none;">
+                    <button id="loadMoreBtn" class="load-more-btn">Load More Notes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live indicator -->
+    <div id="liveIndicator" class="live-indicator" style="display: none;">
+        🔴 LIVE
+    </div>
+
+    <script type="module">
+        class BitchatNostrVisualizer {
+            constructor() {
+                // Use the same relays as Bitchat
+                this.relays = [
+                    'wss://relay.damus.io',
+                    'wss://nos.lol',
+                    'wss://relay.primal.net',
+                    'wss://offchain.pub',
+                    'wss://nostr21.com'
+                ];
+                this.activities = [];
+                this.map = null;
+                this.mapMarkers = [];
+                this.relayStatus = {};
+                this.websockets = {};
+                this.subscriptionIds = {};
+                this.geohashFilter = '';
+                this.loadMoreSubscriptionIds = {};
+                this.isLoadingMore = false;
+                this.initialLoadComplete = false;
+                this.loadMoreRequestsSent = 0;
+                this.loadMoreRequestsCompleted = 0;
+                this.geohashRectangles = [];
+                this.exclude9q = false;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    this.initMap();
+                    this.initializeRelayStatus();
+                    this.setupFilterHandlers();
+                    this.startStatsUpdateTimer();
+                    await this.connectToRelays();
+                } catch (error) {
+                    this.displayError('Failed to connect to relays: ' + error.message);
+                }
+            }
+
+            startStatsUpdateTimer() {
+                // Update stats every 5 seconds to refresh connection times
+                setInterval(() => {
+                    if (this.activities.length > 0) {
+                        this.displayStats(this.activities);
+                    }
+                }, 5000);
+            }
+
+            initMap() {
+                this.map = L.map('map').setView([0, 0], 2);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    className: 'custom-map-tiles'
+                }).addTo(this.map);
+                
+                this.styleMap();
+                console.log('Map initialized');
+            }
+
+            styleMap() {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .custom-map-tiles {
+                        filter: hue-rotate(280deg) saturate(1.2) brightness(0.9) contrast(1.1);
+                    }
+                    .leaflet-container {
+                        background: linear-gradient(135deg, #8B5CF6 0%, #F59E0B 100%);
+                    }
+                    .leaflet-control-zoom a {
+                        background: rgba(255, 255, 255, 0.9);
+                        color: #8B5CF6;
+                        border: 1px solid rgba(139, 92, 246, 0.3);
+                        backdrop-filter: blur(10px);
+                    }
+                    .leaflet-control-zoom a:hover {
+                        background: linear-gradient(135deg, #8B5CF6, #F59E0B);
+                        color: white;
+                    }
+                    .leaflet-popup-content-wrapper {
+                        background: rgba(255, 255, 255, 0.95);
+                        backdrop-filter: blur(10px);
+                        border-radius: 12px;
+                        border: 1px solid rgba(139, 92, 246, 0.2);
+                        box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+                    }
+                    .leaflet-popup-tip {
+                        background: rgba(255, 255, 255, 0.95);
+                        border: 1px solid rgba(139, 92, 246, 0.2);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            setupFilterHandlers() {
+                const geohashFilter = document.getElementById('geohashFilter');
+                const clearFilter = document.getElementById('clearFilter');
+                const filterStatus = document.getElementById('filterStatus');
+                const loadMoreBtn = document.getElementById('loadMoreBtn');
+                const exclude9qToggle = document.getElementById('exclude9q');
+
+                geohashFilter.addEventListener('input', (e) => {
+                    this.geohashFilter = e.target.value.trim().toLowerCase();
+                    this.updateFilterStatus();
+                    this.displayActivities(this.activities);
+                    this.plotActivitiesOnMap(this.activities);
+                    
+                    // If filtering by a specific geohash, show its rectangle
+                    if (this.geohashFilter && this.isGeohash(this.geohashFilter)) {
+                        this.highlightGeohashArea(this.geohashFilter);
+                    }
+                });
+
+                clearFilter.addEventListener('click', () => {
+                    geohashFilter.value = '';
+                    this.geohashFilter = '';
+                    this.updateFilterStatus();
+                    this.displayActivities(this.activities);
+                    this.plotActivitiesOnMap(this.activities);
+                });
+
+                exclude9qToggle.addEventListener('change', (e) => {
+                    this.exclude9q = e.target.checked;
+                    console.log('Exclude 9q toggle:', this.exclude9q);
+                    this.updateFilterStatus();
+                    this.displayActivities(this.activities);
+                    this.plotActivitiesOnMap(this.activities);
+                    
+                    // If enabling 9q exclusion, automatically load more non-9q notes
+                    if (this.exclude9q) {
+                        console.log('9q exclusion enabled - loading more non-9q notes...');
+                        this.loadMoreNon9qNotes();
+                    }
+                });
+
+                loadMoreBtn.addEventListener('click', () => {
+                    console.log('Load more button clicked!');
+                    this.loadMoreNotes();
+                });
+
+                this.updateFilterStatus();
+            }
+
+            updateFilterStatus() {
+                const filterStatus = document.getElementById('filterStatus');
+                let statusText = '';
+                
+                if (this.geohashFilter) {
+                    statusText = `Filtering for geohash: ${this.geohashFilter}`;
+                } else {
+                    statusText = 'Showing all geohashes';
+                }
+                
+                if (this.exclude9q) {
+                    statusText += ' (excluding 9q area)';
+                }
+                
+                filterStatus.textContent = statusText;
+            }
+
+            getFilteredActivities() {
+                let filtered = this.activities;
+                
+                // Apply geohash filter
+                if (this.geohashFilter) {
+                    filtered = filtered.filter(activity => {
+                        if (!activity.tags) return false;
+                        
+                        return activity.tags.some(tag => 
+                            tag[0] === 'g' && 
+                            tag[1] && 
+                            tag[1].toLowerCase().includes(this.geohashFilter)
+                        );
+                    });
+                }
+                
+                // Apply 9q exclusion filter
+                if (this.exclude9q) {
+                    filtered = filtered.filter(activity => {
+                        if (!activity.tags) return true;
+                        
+                        // Check if any geohash tag starts with "9q"
+                        const has9qGeohash = activity.tags.some(tag => 
+                            tag[0] === 'g' && 
+                            tag[1] && 
+                            tag[1].toLowerCase().startsWith('9q')
+                        );
+                        
+                        return !has9qGeohash;
+                    });
+                }
+                
+                return filtered;
+            }
+
+            showLoadMoreButton() {
+                console.log('showLoadMoreButton called');
+                const loadMoreContainer = document.getElementById('loadMoreContainer');
+                if (loadMoreContainer) {
+                    loadMoreContainer.style.display = 'block';
+                    console.log('Load more button container shown');
+                } else {
+                    console.error('Load more container not found!');
+                }
+            }
+
+            updateLoadMoreButton() {
+                const loadMoreBtn = document.getElementById('loadMoreBtn');
+                if (loadMoreBtn) {
+                    loadMoreBtn.disabled = this.isLoadingMore;
+                    if (this.isLoadingMore) {
+                        loadMoreBtn.textContent = `Loading... (${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent})`;
+                    } else {
+                        loadMoreBtn.textContent = 'Load More Notes';
+                    }
+                }
+            }
+
+            loadMoreNotes() {
+                console.log('loadMoreNotes called, isLoadingMore:', this.isLoadingMore);
+                
+                if (this.isLoadingMore) {
+                    console.log('Already loading more, ignoring request');
+                    return;
+                }
+                
+                this.isLoadingMore = true;
+                this.updateLoadMoreButton();
+                
+                console.log('Loading more notes...');
+                console.log('Current activities count:', this.activities.length);
+                
+                // Find the oldest activity to use as the "until" parameter
+                const oldestActivity = this.activities.reduce((oldest, current) => 
+                    current.created_at < oldest.created_at ? current : oldest, this.activities[0]);
+                
+                const untilTimestamp = oldestActivity ? oldestActivity.created_at - 1 : Math.floor(Date.now() / 1000);
+                console.log('Oldest activity timestamp:', oldestActivity?.created_at, 'Until timestamp:', untilTimestamp);
+                
+                // Clear previous load more subscription IDs
+                this.closeAllLoadMoreSubscriptions();
+                this.loadMoreRequestsSent = 0;
+                this.loadMoreRequestsCompleted = 0;
+                
+                // Request more events from each relay
+                for (const relayUrl of this.relays) {
+                    if (this.websockets[relayUrl] && this.websockets[relayUrl].readyState === WebSocket.OPEN) {
+                        console.log(`Requesting more events from ${relayUrl}`);
+                        this.requestMoreEvents(relayUrl, untilTimestamp);
+                        this.loadMoreRequestsSent++;
+                    } else {
+                        console.log(`Skipping ${relayUrl} - not connected`);
+                    }
+                }
+                
+                console.log(`Sent ${this.loadMoreRequestsSent} load more requests`);
+                
+                // If no requests were sent, reset loading state
+                if (this.loadMoreRequestsSent === 0) {
+                    console.log('No requests sent, resetting loading state');
+                    this.isLoadingMore = false;
+                    this.updateLoadMoreButton();
+                } else {
+                    // Set a timeout fallback in case EOSE doesn't come through
+                    setTimeout(() => {
+                        if (this.isLoadingMore) {
+                            console.log('Load more timeout - forcing completion');
+                            this.isLoadingMore = false;
+                            this.updateLoadMoreButton();
+                        }
+                    }, 15000); // 15 second timeout
+                }
+            }
+
+            requestMoreEvents(relayUrl, untilTimestamp) {
+                // Close any existing load more subscription for this relay
+                if (this.loadMoreSubscriptionIds[relayUrl]) {
+                    const closeSubscription = ["CLOSE", this.loadMoreSubscriptionIds[relayUrl]];
+                    try {
+                        this.websockets[relayUrl].send(JSON.stringify(closeSubscription));
+                        console.log(`Closed previous load more subscription for ${relayUrl}`);
+                    } catch (error) {
+                        console.warn(`Error closing previous subscription for ${relayUrl}:`, error);
+                    }
+                }
+                
+                const subscriptionId = "load-more-" + Math.random().toString(36).substr(2, 9);
+                this.loadMoreSubscriptionIds[relayUrl] = subscriptionId;
+                
+                const filters = {
+                    "kinds": [20000], // Only ephemeral events (location channels)
+                    "until": untilTimestamp,
+                    "limit": this.exclude9q ? 1000 : 500 // Request more events when excluding 9q to compensate
+                };
+                
+                // Add geohash filter if one is active
+                if (this.geohashFilter) {
+                    // For geohash filtering, we need to request all events and filter client-side
+                    // since Nostr doesn't support tag filtering in the same way
+                    console.log(`Load more with geohash filter: ${this.geohashFilter}`);
+                }
+                
+                if (this.exclude9q) {
+                    console.log(`Load more with 9q exclusion - requesting more events to compensate`);
+                }
+                
+                const subscription = [
+                    "REQ",
+                    subscriptionId,
+                    filters
+                ];
+                
+                console.log(`Requesting more events from ${relayUrl} until ${untilTimestamp}:`, subscription);
+                console.log(`WebSocket state:`, this.websockets[relayUrl].readyState);
+                
+                try {
+                    this.websockets[relayUrl].send(JSON.stringify(subscription));
+                    console.log(`Successfully sent load more request to ${relayUrl}`);
+                } catch (error) {
+                    console.error(`Error sending load more request to ${relayUrl}:`, error);
+                }
+            }
+
+            loadMoreNon9qNotes() {
+                if (this.isLoadingMore) {
+                    console.log('Already loading more, skipping non-9q load');
+                    return;
+                }
+                
+                console.log('Loading more non-9q notes to compensate for exclusion...');
+                
+                // Find the oldest activity to use as the "until" parameter
+                const oldestActivity = this.activities.reduce((oldest, current) => 
+                    current.created_at < oldest.created_at ? current : oldest, this.activities[0]);
+                
+                const untilTimestamp = oldestActivity ? oldestActivity.created_at - 1 : Math.floor(Date.now() / 1000);
+                
+                // Clear previous load more subscription IDs
+                this.closeAllLoadMoreSubscriptions();
+                this.loadMoreRequestsSent = 0;
+                this.loadMoreRequestsCompleted = 0;
+                
+                // Request more events from each relay with higher limit
+                for (const relayUrl of this.relays) {
+                    if (this.websockets[relayUrl] && this.websockets[relayUrl].readyState === WebSocket.OPEN) {
+                        console.log(`Requesting more non-9q events from ${relayUrl}`);
+                        this.requestMoreEvents(relayUrl, untilTimestamp);
+                        this.loadMoreRequestsSent++;
+                    } else {
+                        console.log(`Skipping ${relayUrl} - not connected`);
+                    }
+                }
+                
+                console.log(`Sent ${this.loadMoreRequestsSent} load more requests for non-9q notes`);
+            }
+
+            closeAllLoadMoreSubscriptions() {
+                for (const relayUrl of this.relays) {
+                    if (this.loadMoreSubscriptionIds[relayUrl] && this.websockets[relayUrl] && this.websockets[relayUrl].readyState === WebSocket.OPEN) {
+                        const closeSubscription = ["CLOSE", this.loadMoreSubscriptionIds[relayUrl]];
+                        try {
+                            this.websockets[relayUrl].send(JSON.stringify(closeSubscription));
+                            console.log(`Closed load more subscription for ${relayUrl}`);
+                        } catch (error) {
+                            console.warn(`Error closing load more subscription for ${relayUrl}:`, error);
+                        }
+                    }
+                }
+                this.loadMoreSubscriptionIds = {};
+            }
+
+            async connectToRelays() {
+                const activityContainer = document.getElementById('activityContainer');
+                activityContainer.innerHTML = '<div class="loading">Connecting to Bitchat Nostr relays...</div>';
+
+                for (const relayUrl of this.relays) {
+                    this.connectToRelay(relayUrl);
+                }
+            }
+
+            connectToRelay(relayUrl) {
+                console.log(`Connecting to ${relayUrl}...`);
+                this.updateRelayStatus(relayUrl, 'connecting');
+
+                try {
+                    const ws = new WebSocket(relayUrl);
+                    this.websockets[relayUrl] = ws;
+                    
+                    const subscriptionId = "bitchat-activity-" + Math.random().toString(36).substr(2, 9);
+                    this.subscriptionIds[relayUrl] = subscriptionId;
+
+                    ws.onopen = () => {
+                        console.log(`Connected to ${relayUrl}`);
+                        this.updateRelayStatus(relayUrl, 'connected');
+                        
+                        // Subscribe to Bitchat-specific event kinds
+                        const filters = {
+                            "kinds": [20000], // Only ephemeral events (location channels)
+                            "limit": 10000
+                        };
+                        
+                        const subscription = [
+                            "REQ",
+                            subscriptionId,
+                            filters
+                        ];
+                        
+                        console.log(`Sending subscription to ${relayUrl}:`, subscription);
+                        ws.send(JSON.stringify(subscription));
+                    };
+
+                    ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.log(`Received from ${relayUrl}:`, data);
+                            
+                            if (Array.isArray(data)) {
+                                const [messageType, subId, eventData] = data;
+                                
+                                if (messageType === 'EVENT' && eventData && (subId === subscriptionId || (subId && subId.startsWith('load-more-')))) {
+                                    // Log all events for debugging
+                                    const isLoadMore = subId && subId.startsWith('load-more-');
+                                    console.log(`📨 Received event: ${eventData.id}, kind: ${eventData.kind}, content: "${eventData.content?.substring(0, 30)}...", loadMore: ${isLoadMore}`);
+                                    
+                                    // Debug: Check for geohash tags in all events
+                                    if (eventData.tags) {
+                                        const geohashTags = eventData.tags.filter(tag => tag[0] === 'g' && tag[1]);
+                                        if (geohashTags.length > 0) {
+                                            console.log(`Found geohash tags in event ${eventData.id}:`, geohashTags);
+                                            console.log(`Event content:`, eventData.content);
+                                            console.log(`Event kind:`, eventData.kind);
+                                        }
+                                    }
+                                    
+                                    // Check if this is Bitchat activity
+                                    if (this.isBitchatActivity(eventData)) {
+                                        console.log(`Adding Bitchat activity from ${relayUrl}:`, eventData);
+                                        this.addNewActivity(eventData);
+                                        this.updateRelayStatus(relayUrl, 'connected', this.activities.length);
+                                    } else {
+                                        // Debug: Log why event was rejected
+                                        console.log(`Event ${eventData.id} rejected as Bitchat activity. Content:`, eventData.content?.substring(0, 100));
+                                        console.log(`Tags:`, eventData.tags);
+                                    }
+                } else if (messageType === 'EOSE' && subId === subscriptionId) {
+                    console.log(`EOSE received from ${relayUrl}, initial load complete`);
+                    this.updateRelayStatus(relayUrl, 'connected', this.activities.length);
+                    
+                    if (this.activities.length > 0) {
+                        this.displayStats(this.activities);
+                    }
+                    
+                    // Show load more button after initial load
+                    if (!this.initialLoadComplete) {
+                        this.initialLoadComplete = true;
+                        this.showLoadMoreButton();
+                    }
+                } else if (messageType === 'EOSE' && subId && subId.startsWith('load-more-')) {
+                    console.log(`Load more EOSE received from ${relayUrl} for subscription ${subId}`);
+                    this.loadMoreRequestsCompleted++;
+                    
+                    // Check if all load more requests are complete
+                    if (this.loadMoreRequestsCompleted >= this.loadMoreRequestsSent) {
+                        this.isLoadingMore = false;
+                        this.updateLoadMoreButton();
+                        console.log(`All load more requests completed (${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent})`);
+                        console.log(`Total activities after load more: ${this.activities.length}`);
+                    } else {
+                        console.log(`Load more progress: ${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent}`);
+                    }
+                } else if (messageType === 'NOTICE') {
+                                    console.log(`Notice from ${relayUrl}:`, eventData);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Error parsing message from', relayUrl, ':', e);
+                        }
+                    };
+
+                    ws.onerror = (error) => {
+                        console.error(`Error connecting to ${relayUrl}:`, error);
+                        this.updateRelayStatus(relayUrl, 'disconnected');
+                    };
+
+                    ws.onclose = () => {
+                        console.log(`Connection to ${relayUrl} closed`);
+                        this.updateRelayStatus(relayUrl, 'disconnected');
+                        
+                        setTimeout(() => {
+                            console.log(`Attempting to reconnect to ${relayUrl}...`);
+                            this.connectToRelay(relayUrl);
+                        }, 5000);
+                    };
+                } catch (error) {
+                    console.error(`Failed to connect to ${relayUrl}:`, error);
+                    this.updateRelayStatus(relayUrl, 'disconnected');
+                }
+            }
+
+            isBitchatActivity(event) {
+                // Only accept Kind 20000 events (ephemeral events for location channels)
+                if (event.kind !== 20000) {
+                    return false;
+                }
+                
+                const content = event.content || '';
+                const tags = event.tags || [];
+                
+                // Check for geohash tags (common in Bitchat location channels)
+                const hasGeohashTag = tags.some(tag => tag[0] === 'g' && tag[1]);
+                
+                // Debug logging for geohash events
+                if (hasGeohashTag) {
+                    console.log(`Geohash event detected: ${event.id}, content: "${content.substring(0, 50)}...", geohash: ${tags.find(tag => tag[0] === 'g')?.[1]}`);
+                    console.log(`Geohash tags:`, tags.filter(tag => tag[0] === 'g'));
+                    
+                    // Special logging for "ey" geohash
+                    const eyGeohash = tags.some(tag => tag[0] === 'g' && tag[1] === 'ey');
+                    if (eyGeohash) {
+                        console.log(`🎯 EY GEOHASH MESSAGE FOUND!`, {
+                            id: event.id,
+                            content: content,
+                            kind: event.kind,
+                            tags: tags,
+                            created_at: new Date(event.created_at * 1000).toISOString()
+                        });
+                    }
+                }
+                
+                // Accept all Kind 20000 events (they are Bitchat location channel messages)
+                return true;
+            }
+
+            addNewActivity(activity) {
+                // Check if activity already exists
+                if (this.activities.find(a => a.id === activity.id)) {
+                    console.log(`Activity ${activity.id} already exists, skipping`);
+                    return;
+                }
+
+                this.activities.push(activity);
+                this.activities.sort((a, b) => b.created_at - a.created_at);
+                
+                if (this.activities.length > 10000) {
+                    this.activities = this.activities.slice(0, 10000);
+                }
+
+                // Show live indicator
+                const liveIndicator = document.getElementById('liveIndicator');
+                if (liveIndicator) {
+                    liveIndicator.style.display = 'block';
+                    setTimeout(() => {
+                        liveIndicator.style.display = 'none';
+                    }, 3000);
+                }
+
+                this.displayActivities(this.activities);
+                this.plotActivitiesOnMap(this.activities);
+                
+                // Add visual effect to the new activity
+                setTimeout(() => {
+                    const activityElement = document.querySelector(`[data-activity-id="${activity.id}"]`);
+                    if (activityElement) {
+                        activityElement.classList.add('activity-new');
+                        setTimeout(() => {
+                            activityElement.classList.remove('activity-new');
+                        }, 500);
+                    }
+                }, 100);
+                
+                console.log(`Added new Bitchat activity: ${activity.id}, total activities: ${this.activities.length}`);
+            }
+
+            displayActivities(activities) {
+                const activityContainer = document.getElementById('activityContainer');
+                const filteredActivities = this.getFilteredActivities();
+                
+                if (filteredActivities.length === 0) {
+                    if (this.geohashFilter) {
+                        activityContainer.innerHTML = `<div class="loading">No activities found for geohash "${this.geohashFilter}". Try a different geohash or clear the filter.</div>`;
+                    } else {
+                        activityContainer.innerHTML = '<div class="loading">No Bitchat activity found. Check the browser console for debug information.</div>';
+                    }
+                    return;
+                }
+
+                const loadingDiv = activityContainer.querySelector('.loading');
+                if (loadingDiv) {
+                    loadingDiv.remove();
+                }
+
+                const sortedActivities = [...filteredActivities].sort((a, b) => b.created_at - a.created_at);
+                activityContainer.innerHTML = '';
+
+                sortedActivities.forEach(activity => {
+                    console.log('Processing activity:', activity);
+                    const activityDiv = document.createElement('div');
+                    activityDiv.className = 'activity-item';
+                    activityDiv.setAttribute('data-activity-id', activity.id);
+                    
+                    try {
+                        const timestamp = new Date(activity.created_at * 1000);
+                        const timeString = this.formatTime(timestamp);
+                        const relativeTime = this.getRelativeTime(timestamp);
+                        
+                        const renderedHtml = this.renderActivity(activity, timeString, relativeTime);
+                        
+                        if (renderedHtml && typeof renderedHtml === 'string' && renderedHtml.trim().length > 0) {
+                            activityDiv.innerHTML = renderedHtml;
+                        } else {
+                            activityDiv.innerHTML = this.renderFallbackActivity(activity, timeString, relativeTime);
+                        }
+                    } catch (error) {
+                        console.error('Error rendering activity:', error, activity);
+                        activityDiv.innerHTML = this.renderFallbackActivity(activity, timeString, relativeTime);
+                    }
+                    
+                    activityContainer.appendChild(activityDiv);
+                });
+            }
+
+            renderActivity(activity, timeString, relativeTime) {
+                const content = this.escapeHtml(activity.content || '');
+                const processedContent = content.replace(/\n/g, '<br>');
+                
+                // Extract geohash tags
+                const geohashTags = [];
+                if (activity.tags) {
+                    activity.tags.forEach(tag => {
+                        if (tag[0] === 'g' && tag[1]) {
+                            geohashTags.push(tag[1]);
+                        }
+                    });
+                }
+                
+                const geohashHtml = geohashTags.length > 0 ? `
+                    <div style="margin: 8px 0;">
+                        ${geohashTags.map(geohash => `<span class="geohash-tag">📍 ${geohash}</span>`).join('')}
+                    </div>
+                ` : '';
+                
+                const activityType = this.getActivityType(activity);
+                
+                // Display content as-is for location channel messages
+                let contentHtml = processedContent;
+                
+                return `
+                    <div class="activity-header">
+                        ${activityType ? `<span class="activity-type">${activityType}</span>` : ''}
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span class="activity-time" title="${timeString}">${relativeTime}</span>
+                        </div>
+                    </div>
+                    <div class="activity-content">${contentHtml}</div>
+                    ${geohashHtml}
+                `;
+            }
+
+            getActivityType(activity) {
+                // All activities are Kind 20000 (ephemeral events for location channels)
+                return '';
+            }
+
+            renderFallbackActivity(activity, timeString, relativeTime) {
+                return `
+                    <div class="activity-header">
+                        <span class="activity-type">Unknown Activity</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span class="activity-time" title="${timeString}">${relativeTime}</span>
+                            <span class="activity-kind">Kind ${activity.kind || 'Unknown'}</span>
+                        </div>
+                    </div>
+                    <div class="activity-content">${this.escapeHtml(activity.content || 'No content')}</div>
+                `;
+            }
+
+            displayStats(activities) {
+                let statsDiv = document.getElementById('statsBox');
+                
+                if (!statsDiv) {
+                    statsDiv = document.createElement('div');
+                    statsDiv.id = 'statsBox';
+                    statsDiv.className = 'stats';
+                    document.body.appendChild(statsDiv);
+                }
+                
+                const filteredActivities = this.getFilteredActivities();
+                
+                // Count activities with geo information
+                let geoActivitiesCount = 0;
+                filteredActivities.forEach(activity => {
+                    const geo = this.extractGeoLocation(activity);
+                    if (geo) {
+                        geoActivitiesCount++;
+                    }
+                });
+
+                // Count by activity type
+                const activityTypes = {};
+                filteredActivities.forEach(activity => {
+                    const type = this.getActivityType(activity);
+                    activityTypes[type] = (activityTypes[type] || 0) + 1;
+                });
+
+                // Generate relay status HTML
+                const relayStatusHtml = this.relays.map(relayUrl => {
+                    const status = this.relayStatus[relayUrl];
+                    const relayName = relayUrl.replace('wss://', '');
+                    const statusClass = `relay-${status.status}`;
+                    
+                    let statsText = '';
+                    if (status.notesCount > 0) {
+                        statsText = `${status.notesCount} activities`;
+                    }
+                    
+                    // Calculate connection time more accurately
+                    if (status.connectionTime) {
+                        const connectionAge = Math.floor((new Date() - status.connectionTime) / 1000);
+                        if (connectionAge < 60) {
+                            statsText += statsText ? ` • ${connectionAge}s` : `${connectionAge}s`;
+                        } else if (connectionAge < 3600) {
+                            const minutes = Math.floor(connectionAge / 60);
+                            statsText += statsText ? ` • ${minutes}m` : `${minutes}m`;
+                        } else {
+                            const hours = Math.floor(connectionAge / 3600);
+                            statsText += statsText ? ` • ${hours}h` : `${hours}h`;
+                        }
+                    } else if (status.status === 'connected') {
+                        // If connected but no connectionTime, show as "just connected"
+                        statsText += statsText ? ` • just now` : `just now`;
+                    }
+
+                    return `
+                        <div class="relay-item">
+                            <div class="relay-status-indicator ${statusClass}"></div>
+                            <div class="relay-name">${relayName}</div>
+                            <div class="relay-stats">${statsText}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                const activityTypesHtml = Object.entries(activityTypes)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 5)
+                    .map(([type, count]) => `<div>${type}: ${count}</div>`)
+                    .join('');
+                
+                const totalActivities = this.activities.length;
+                const filteredCount = filteredActivities.length;
+                
+                statsDiv.innerHTML = `
+                    <div class="stats-section">
+                        <h3>📊 Bitchat Statistics</h3>
+                        <p><strong>${filteredCount}</strong> ${this.geohashFilter ? 'filtered' : 'total'} activities</p>
+                        <p><strong>${geoActivitiesCount}</strong> activities with geo info</p>
+                        ${this.geohashFilter ? `<p><em>Filtered from ${totalActivities} total activities</em></p>` : ''}
+                    </div>
+                    <div class="stats-section">
+                        <h3>📈 Activity Types</h3>
+                        ${activityTypesHtml}
+                    </div>
+                    <div class="stats-section">
+                        <h3>🌐 Relays</h3>
+                        ${relayStatusHtml}
+                    </div>
+                `;
+            }
+
+            formatTime(date) {
+                return date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+
+            getRelativeTime(date) {
+                const now = new Date();
+                const diffInSeconds = Math.floor((now - date) / 1000);
+                
+                if (diffInSeconds < 60) return 'just now';
+                if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+                if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+                if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+                
+                return date.toLocaleDateString();
+            }
+
+            extractGeoLocation(activity) {
+                let lat = null;
+                let lng = null;
+                let location = null;
+                
+                if (activity.tags) {
+                    for (const tag of activity.tags) {
+                        if (tag[0] === 'g' && tag[1]) {
+                            const coordMatch = tag[1].match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
+                            if (coordMatch) {
+                                lat = parseFloat(coordMatch[1]);
+                                lng = parseFloat(coordMatch[2]);
+                                location = `Coordinates: ${tag[1]}`;
+                                break;
+                            }
+                            
+                            if (this.isGeohash(tag[1])) {
+                                const coords = this.geohashToLatLng(tag[1]);
+                                if (coords) {
+                                    lat = coords.lat;
+                                    lng = coords.lng;
+                                    location = `Geohash: ${tag[1]}`;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (lat && lng && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    return { lat, lng, location: location || `${lat.toFixed(4)}, ${lng.toFixed(4)}` };
+                }
+                
+                return null;
+            }
+
+            isGeohash(str) {
+                return /^[0-9b-hj-km-np-z]+$/.test(str) && str.length >= 1 && str.length <= 12;
+            }
+
+            geohashToLatLng(geohash) {
+                try {
+                    const base32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+                    let isEven = true;
+                    let lat = [-90, 90];
+                    let lng = [-180, 180];
+                    
+                    for (let i = 0; i < geohash.length; i++) {
+                        const char = geohash[i];
+                        const bits = base32.indexOf(char);
+                        
+                        for (let j = 4; j >= 0; j--) {
+                            const bit = (bits >> j) & 1;
+                            
+                            if (isEven) {
+                                const mid = (lng[0] + lng[1]) / 2;
+                                if (bit) {
+                                    lng[0] = mid;
+                                } else {
+                                    lng[1] = mid;
+                                }
+                            } else {
+                                const mid = (lat[0] + lat[1]) / 2;
+                                if (bit) {
+                                    lat[0] = mid;
+                                } else {
+                                    lat[1] = mid;
+                                }
+                            }
+                            
+                            isEven = !isEven;
+                        }
+                    }
+                    
+                    return {
+                        lat: (lat[0] + lat[1]) / 2,
+                        lng: (lng[0] + lng[1]) / 2
+                    };
+                } catch (e) {
+                    console.warn('Error decoding geohash:', geohash, e);
+                    return null;
+                }
+            }
+
+            geohashToBounds(geohash) {
+                try {
+                    const base32 = "0123456789bcdefghjkmnpqrstuvwxyz";
+                    let isEven = true;
+                    let lat = [-90, 90];
+                    let lng = [-180, 180];
+                    
+                    for (let i = 0; i < geohash.length; i++) {
+                        const char = geohash[i];
+                        const bits = base32.indexOf(char);
+                        
+                        for (let j = 4; j >= 0; j--) {
+                            const bit = (bits >> j) & 1;
+                            
+                            if (isEven) {
+                                const mid = (lng[0] + lng[1]) / 2;
+                                if (bit) {
+                                    lng[0] = mid;
+                                } else {
+                                    lng[1] = mid;
+                                }
+                            } else {
+                                const mid = (lat[0] + lat[1]) / 2;
+                                if (bit) {
+                                    lat[0] = mid;
+                                } else {
+                                    lat[1] = mid;
+                                }
+                            }
+                            
+                            isEven = !isEven;
+                        }
+                    }
+                    
+                    return {
+                        north: lat[1],
+                        south: lat[0],
+                        east: lng[1],
+                        west: lng[0]
+                    };
+                } catch (e) {
+                    console.warn('Error calculating geohash bounds:', geohash, e);
+                    return null;
+                }
+            }
+
+            plotActivitiesOnMap(activities) {
+                this.mapMarkers.forEach(marker => this.map.removeLayer(marker));
+                this.mapMarkers = [];
+                
+                // Clear existing geohash rectangles
+                this.geohashRectangles.forEach(rect => this.map.removeLayer(rect));
+                this.geohashRectangles = [];
+                
+                const geoActivities = [];
+                const filteredActivities = this.getFilteredActivities();
+                
+                // Collect unique geohashes from filtered activities
+                const uniqueGeohashes = new Set();
+                
+                filteredActivities.forEach(activity => {
+                    const geo = this.extractGeoLocation(activity);
+                    if (geo) {
+                        geoActivities.push({ activity, geo });
+                        console.log(`Found geo activity: ${geo.location} (${geo.lat}, ${geo.lng}) - Kind ${activity.kind}`);
+                        
+                        // Extract geohash from tags
+                        if (activity.tags) {
+                            activity.tags.forEach(tag => {
+                                if (tag[0] === 'g' && tag[1] && this.isGeohash(tag[1])) {
+                                    uniqueGeohashes.add(tag[1]);
+                                }
+                            });
+                        }
+                    }
+                });
+                
+                console.log(`Found ${geoActivities.length} activities with geo-location data out of ${filteredActivities.length} filtered activities`);
+                console.log(`Found ${uniqueGeohashes.size} unique geohashes:`, Array.from(uniqueGeohashes));
+                
+                // Plot geohash rectangles
+                this.plotGeohashRectangles(Array.from(uniqueGeohashes));
+                
+                if (geoActivities.length === 0) {
+                    return;
+                }
+                
+                geoActivities.forEach(({ activity, geo }, index) => {
+                    const marker = L.marker([geo.lat, geo.lng], {
+                        icon: L.divIcon({
+                            className: 'map-marker',
+                            html: '📍',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
+                        })
+                    });
+                    
+                    const activityType = this.getActivityType(activity);
+                    const popupContent = `
+                        <div class="map-popup">
+                            <div class="activity-title">${activityType}</div>
+                            <div class="popup-content">${this.escapeHtml(activity.content?.substring(0, 100) || 'No content')}${activity.content?.length > 100 ? '...' : ''}</div>
+                            <div class="popup-time">${this.getRelativeTime(new Date(activity.created_at * 1000))}</div>
+                            <div class="popup-location">📍 ${geo.location}</div>
+                        </div>
+                    `;
+                    
+                    marker.bindPopup(popupContent);
+                    marker.addTo(this.map);
+                    this.mapMarkers.push(marker);
+                });
+                
+                console.log(`Plotted ${geoActivities.length} geo-located activities on map`);
+            }
+
+            plotGeohashRectangles(geohashes) {
+                geohashes.forEach(geohash => {
+                    const bounds = this.geohashToBounds(geohash);
+                    if (bounds) {
+                        const rectangle = L.rectangle([
+                            [bounds.south, bounds.west],
+                            [bounds.north, bounds.east]
+                        ], {
+                            color: '#8B5CF6',
+                            fillColor: '#8B5CF6',
+                            fillOpacity: 0.1,
+                            weight: 2,
+                            opacity: 0.6
+                        });
+                        
+                        // Add popup with geohash info
+                        const popupContent = `
+                            <div class="map-popup">
+                                <div class="activity-title">Geohash Area</div>
+                                <div class="popup-content"><strong>${geohash}</strong></div>
+                                <div class="popup-location">
+                                    Bounds: ${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)} to ${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}
+                                </div>
+                            </div>
+                        `;
+                        
+                        rectangle.bindPopup(popupContent);
+                        rectangle.addTo(this.map);
+                        this.geohashRectangles.push(rectangle);
+                        
+                        console.log(`Plotted geohash rectangle for ${geohash}:`, bounds);
+                    }
+                });
+            }
+
+            highlightGeohashArea(geohash) {
+                // Clear existing geohash rectangles
+                this.geohashRectangles.forEach(rect => this.map.removeLayer(rect));
+                this.geohashRectangles = [];
+                
+                const bounds = this.geohashToBounds(geohash);
+                if (bounds) {
+                    const rectangle = L.rectangle([
+                        [bounds.south, bounds.west],
+                        [bounds.north, bounds.east]
+                    ], {
+                        color: '#F59E0B',
+                        fillColor: '#F59E0B',
+                        fillOpacity: 0.2,
+                        weight: 3,
+                        opacity: 0.8
+                    });
+                    
+                    // Add popup with geohash info
+                    const popupContent = `
+                        <div class="map-popup">
+                            <div class="activity-title">Filtered Geohash Area</div>
+                            <div class="popup-content"><strong>${geohash}</strong></div>
+                            <div class="popup-location">
+                                Bounds: ${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)} to ${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}
+                            </div>
+                        </div>
+                    `;
+                    
+                    rectangle.bindPopup(popupContent);
+                    rectangle.addTo(this.map);
+                    this.geohashRectangles.push(rectangle);
+                    
+                    // Fit map to the geohash area
+                    this.map.fitBounds([
+                        [bounds.south, bounds.west],
+                        [bounds.north, bounds.east]
+                    ], { padding: [20, 20] });
+                    
+                    console.log(`Highlighted geohash area for ${geohash}:`, bounds);
+                }
+            }
+
+            displayError(message) {
+                const activityContainer = document.getElementById('activityContainer');
+                activityContainer.innerHTML = `<div class="error">${message}</div>`;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            initializeRelayStatus() {
+                this.relays.forEach(relayUrl => {
+                    this.relayStatus[relayUrl] = {
+                        status: 'disconnected',
+                        notesCount: 0,
+                        lastSeen: null,
+                        connectionTime: null
+                    };
+                });
+            }
+
+            updateRelayStatus(relayUrl, status, notesCount = null) {
+                if (this.relayStatus[relayUrl]) {
+                    this.relayStatus[relayUrl].status = status;
+                    this.relayStatus[relayUrl].lastSeen = new Date();
+                    
+                    if (status === 'connected' && !this.relayStatus[relayUrl].connectionTime) {
+                        this.relayStatus[relayUrl].connectionTime = new Date();
+                        console.log(`Set connection time for ${relayUrl}:`, this.relayStatus[relayUrl].connectionTime);
+                    }
+                    
+                    if (notesCount !== null) {
+                        this.relayStatus[relayUrl].notesCount = notesCount;
+                    }
+                }
+            }
+        }
+
+        // Initialize the app when the page loads
+        window.bitchatVisualizer = new BitchatNostrVisualizer();
+    </script>
+</body>
+</html>
