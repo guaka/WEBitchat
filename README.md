@@ -1,4 +1,4 @@
-# Bitchat Nostr Visualizer (BNV)
+# WEBitchat
 
 A standalone real-time web-based visualizer for Bitchat activity over the Nostr protocol, displaying location-based messages on an interactive map.
 
@@ -6,7 +6,7 @@ A standalone real-time web-based visualizer for Bitchat activity over the Nostr 
 
 ## Overview
 
-The Bitchat Nostr Visualizer is a single-page HTML application that connects to multiple Nostr relays to display Bitchat location channel messages (Kind 20000 events) in real-time. It provides both a map view and a chronological activity feed.
+WEBitchat is a single-page HTML application that connects to multiple Nostr relays to display Bitchat location channel messages (Kind 20000 events) in real-time. It provides both a map view and a chronological activity feed.
 
 ## Features
 
@@ -141,7 +141,7 @@ this.relays = [
 - **CDN dependencies**: Leaflet map library loaded from CDN
 
 ### Key Classes
-- **BitchatNostrVisualizer**: Main application class
+- **WEBitchatVisualizer**: Main application class
 - **WebSocket management**: Handles connections to multiple relays
 - **Geohash utilities**: Converts geohashes to coordinates and bounds
 - **Filtering system**: Client-side filtering of messages
