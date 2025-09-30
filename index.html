@@ -1069,8 +1069,8 @@
                 <!-- Geohash Filter -->
                 <div class="filter-container">
                     <div class="filter-input-group">
-                        <label for="geohashFilter">Filter by Geohash:</label>
-                        <input type="text" id="geohashFilter" placeholder="e.g., ey, 9q8yy, etc." />
+                        <label for="geohashFilter">Filter:</label>
+                        <input type="text" id="geohashFilter" placeholder="" />
                         <button id="clearFilter" class="clear-filter-btn">CLEAR</button>
                     </div>
                 </div>
@@ -1914,9 +1914,9 @@
                 
                 const noteType = this.getNoteType(note);
                 
-                // Get username from profile cache
+                // Get username from profile cache with discriminator
                 const profile = this.userProfiles[note.pubkey];
-                const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
+                const username = this.formatUsernameWithDiscriminator(profile, note.pubkey);
                 
                 // Display content as-is for location channel messages
                 let contentHtml = processedContent;
@@ -1944,7 +1944,7 @@
 
             renderFallbackNote(note, timeString, relativeTime) {
                 const profile = this.userProfiles[note.pubkey];
-                const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
+                const username = this.formatUsernameWithDiscriminator(profile, note.pubkey);
                 
                 return `
                     <div class="note-header">
@@ -2251,7 +2251,7 @@
                     
                     const noteType = this.getNoteType(note);
                     const profile = this.userProfiles[note.pubkey];
-                    const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
+                    const username = this.formatUsernameWithDiscriminator(profile, note.pubkey);
                     
                     // Extract geohash from note tags for clickable link
                     let geohashLink = '';
@@ -2681,6 +2681,41 @@
                 return hash.substring(0, 64);
             }
 
+            // Generate a short discriminator from pubkey
+            generateDiscriminator(pubkey) {
+                if (!pubkey) return '';
+                
+                // Take the last 4 characters of the pubkey and convert to a shorter format
+                const lastFour = pubkey.slice(-4);
+                
+                // Convert hex to a more readable format (0-9, a-f -> 0-9, a-z)
+                let discriminator = '';
+                for (let i = 0; i < lastFour.length; i += 2) {
+                    const hexPair = lastFour.substr(i, 2);
+                    const num = parseInt(hexPair, 16);
+                    // Map to a smaller character set (0-9, a-z)
+                    discriminator += (num % 36).toString(36);
+                }
+                
+                return discriminator;
+            }
+
+            // Format username with discriminator
+            formatUsernameWithDiscriminator(profile, pubkey) {
+                if (!profile || !profile.name) {
+                    return pubkey ? pubkey.substring(0, 8) + '...' : 'Unknown';
+                }
+                
+                // Check if the name already has a discriminator
+                if (profile.name.includes('#')) {
+                    return profile.name;
+                }
+                
+                // Add discriminator if it doesn't exist
+                const discriminator = this.generateDiscriminator(pubkey);
+                return `${profile.name}#${discriminator}`;
+            }
+
             // Convert hex public key to npub format
             hexToNpub(hexKey) {
                 try {
@@ -3028,7 +3063,7 @@
 
                 // Get user profile
                 const profile = this.userProfiles[note.pubkey];
-                const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
+                const username = this.formatUsernameWithDiscriminator(profile, note.pubkey);
                 
 
                 // Format timestamp
