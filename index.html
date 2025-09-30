@@ -991,6 +991,28 @@
             background: rgba(255, 102, 102, 0.2);
         }
 
+        /* Reply button styling */
+        .reply-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .reply-btn:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: #ff8800;
+            border-color: #ff8800;
+            box-shadow: 0 0 8px rgba(255, 136, 0, 0.3);
+        }
+
         
         @media (max-width: 768px) {
             .main-container {
@@ -1450,6 +1472,47 @@
                 });
             }
 
+            setupReplyButtonHandlers() {
+                document.querySelectorAll('.reply-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const noteId = e.target.dataset.noteId;
+                        const pubkey = e.target.dataset.pubkey;
+                        const username = e.target.dataset.username;
+                        
+                        if (noteId && pubkey && username) {
+                            const note = this.notes.find(a => a.id === noteId);
+                            if (note) {
+                                this.openReplyCompose(note, pubkey, username);
+                            }
+                        }
+                    });
+                });
+            }
+
+            openReplyCompose(note, pubkey, username) {
+                // Open the compose modal
+                const composeModal = document.getElementById('composeModal');
+                const composeContent = document.getElementById('composeContent');
+                const composeLocation = document.getElementById('composeLocation');
+                
+                // Set the location to the same geohash as the original note
+                let geohash = '';
+                if (note.tags) {
+                    const geohashTag = note.tags.find(tag => tag[0] === 'g' && tag[1]);
+                    if (geohashTag) {
+                        geohash = geohashTag[1];
+                    }
+                }
+                composeLocation.value = geohash;
+                
+                // Start the message with @username
+                composeContent.value = `@${username} `;
+                composeContent.focus();
+                
+                // Open the modal
+                composeModal.style.display = 'flex';
+            }
+
             async fetchUserProfile(pubkey) {
                 if (this.userProfiles[pubkey]) {
                     return this.userProfiles[pubkey];
@@ -1824,6 +1887,9 @@
                 
                 // Set up click handlers for datetime elements
                 this.setupDatetimeClickHandlers();
+                
+                // Set up click handlers for reply buttons
+                this.setupReplyButtonHandlers();
             }
 
             renderNote(note, timeString, relativeTime) {
@@ -1862,6 +1928,7 @@
                             <span class="note-username" style="color: #ff8800; font-weight: 600; font-size: 0.9rem;">@${username}</span>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="reply-btn" data-note-id="${note.id}" data-pubkey="${note.pubkey}" data-username="${username}" title="Reply to this note">💬</button>
                             <span class="note-time" title="${timeString}" data-note-id="${note.id}">${relativeTime}</span>
                         </div>
                     </div>
@@ -1886,6 +1953,7 @@
                             <span class="note-username" style="color: #ff8800; font-weight: 600; font-size: 0.9rem;">@${username}</span>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="reply-btn" data-note-id="${note.id}" data-pubkey="${note.pubkey}" data-username="${username}" title="Reply to this note">💬</button>
                             <span class="note-time" title="${timeString}">${relativeTime}</span>
                             <span class="note-kind">Kind ${note.kind || 'Unknown'}</span>
                         </div>
