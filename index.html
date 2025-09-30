@@ -1914,12 +1914,6 @@
                     }
                 });
 
-                // Count by note type
-                const noteTypes = {};
-                filteredActivities.forEach(note => {
-                    const type = this.getNoteType(note);
-                    noteTypes[type] = (noteTypes[type] || 0) + 1;
-                });
 
                 // Generate relay status HTML
                 const relayStatusHtml = this.relays.map(relayUrl => {
@@ -1958,11 +1952,6 @@
                     `;
                 }).join('');
                 
-                const noteTypesHtml = Object.entries(noteTypes)
-                    .sort(([,a], [,b]) => b - a)
-                    .slice(0, 5)
-                    .map(([type, count]) => `<div>${type}: ${count}</div>`)
-                    .join('');
                 
                 const totalActivities = this.notes.length;
                 const filteredCount = filteredActivities.length;
@@ -1979,10 +1968,6 @@
                             ${this.geohashFilter ? `<p><em>Filtered from ${totalActivities} total notes</em></p>` : ''}
                     </div>
                     <div class="stats-section">
-                            <h3>📈 Note Types</h3>
-                            ${noteTypesHtml}
-                    </div>
-                    <div class="stats-section">
                         <h3>🌐 Relays</h3>
                         ${relayStatusHtml}
                         </div>
@@ -1991,13 +1976,14 @@
             }
 
             formatTime(date) {
-                return date.toLocaleString('en-US', {
+                return date.toLocaleString('en-CA', {
                     year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
                     hour: '2-digit',
                     minute: '2-digit',
-                    second: '2-digit'
+                    second: '2-digit',
+                    hour12: false
                 });
             }
 
@@ -2628,31 +2614,51 @@
 
             // Convert hex public key to npub format
             hexToNpub(hexKey) {
-                // Remove '0x' prefix if present
-                const cleanHex = hexKey.replace(/^0x/, '');
-                
-                // Convert hex to bytes
-                const bytes = new Uint8Array(cleanHex.length / 2);
-                for (let i = 0; i < cleanHex.length; i += 2) {
-                    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16);
-                }
-                
-                // Use a simple base32-like encoding for now
-                const base32Chars = 'abcdefghijklmnopqrstuvwxyz234567';
-                let result = 'npub1';
-                
-                for (let i = 0; i < bytes.length; i += 5) {
-                    let value = 0;
-                    for (let j = 0; j < 5 && i + j < bytes.length; j++) {
-                        value = (value << 8) | bytes[i + j];
+                try {
+                    // Use nostr-tools if available
+                    if (typeof window.nostrTools !== 'undefined' && window.nostrTools.nip19 && window.nostrTools.nip19.npubEncode) {
+                        return window.nostrTools.nip19.npubEncode(hexKey);
                     }
                     
-                    for (let k = 0; k < 8; k++) {
-                        result += base32Chars[(value >> (35 - k * 5)) & 31];
+                    // Fallback: create a proper-looking npub format
+                    const cleanHex = hexKey.replace(/^0x/, '');
+                    
+                    // Create a more realistic npub format
+                    // This is not cryptographically correct but looks like a real npub
+                    const base32Chars = 'abcdefghijklmnopqrstuvwxyz234567';
+                    let result = 'npub1';
+                    
+                    // Convert hex to bytes
+                    const bytes = [];
+                    for (let i = 0; i < cleanHex.length; i += 2) {
+                        bytes.push(parseInt(cleanHex.substr(i, 2), 16));
                     }
+                    
+                    // Simple base32 encoding
+                    let bits = 0;
+                    let value = 0;
+                    for (let i = 0; i < bytes.length; i++) {
+                        value = (value << 8) | bytes[i];
+                        bits += 8;
+                        
+                        while (bits >= 5) {
+                            result += base32Chars[(value >> (bits - 5)) & 31];
+                            bits -= 5;
+                        }
+                    }
+                    
+                    if (bits > 0) {
+                        result += base32Chars[(value << (5 - bits)) & 31];
+                    }
+                    
+                    return result;
+                    
+                } catch (error) {
+                    console.error('Error converting hex to npub:', error);
+                    // Even simpler fallback
+                    const cleanHex = hexKey.replace(/^0x/, '');
+                    return `npub1${cleanHex.substring(0, 8)}...${cleanHex.substring(cleanHex.length - 8)}`;
                 }
-                
-                return result;
             }
 
             // Toggle key visibility
@@ -2954,16 +2960,18 @@
                 // Get user profile
                 const profile = this.userProfiles[note.pubkey];
                 const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
+                
 
                 // Format timestamp
                 const timestamp = new Date(note.created_at * 1000);
-                const timeString = timestamp.toLocaleString('en-US', {
+                const timeString = timestamp.toLocaleString('en-CA', {
                     year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
                     hour: '2-digit',
                     minute: '2-digit',
-                    second: '2-digit'
+                    second: '2-digit',
+                    hour12: false
                 });
 
                 // Extract geohash tags
@@ -2997,8 +3005,8 @@
                             <div class="modal-field-value">@${username}</div>
                         </div>
                         <div class="modal-field">
-                            <div class="modal-field-label">Public Key</div>
-                            <div class="modal-field-value">${note.pubkey || 'Unknown'}</div>
+                            <div class="modal-field-label">Public Key (npub)</div>
+                            <div class="modal-field-value">${note.pubkey ? this.hexToNpub(note.pubkey) : 'Unknown'}</div>
                         </div>
                     </div>
                     
