@@ -182,6 +182,51 @@
             transition: all 0.3s ease;
             font-family: 'Courier New', monospace;
         }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .stats-title {
+            color: #ff8800;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 136, 0, 0.5);
+            margin: 0;
+        }
+
+        .stats-toggle {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s ease;
+        }
+
+        .stats-toggle:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: #ff8800;
+            border-color: #ff8800;
+        }
+
+        .stats-content {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .stats-content.minimized {
+            max-height: 0;
+            opacity: 0;
+            margin: 0;
+            padding: 0;
+        }
         
         .stats:hover {
             background: rgba(0, 0, 0, 0.95);
@@ -409,62 +454,66 @@
         }
 
         .filter-container {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(5px);
+            border: 1px solid #00ff00;
         }
 
         .filter-input-group {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
+            gap: 8px;
+            margin-bottom: 6px;
             flex-wrap: wrap;
         }
 
         .filter-input-group label {
-            color: white;
+            color: #00ff00;
             font-weight: 600;
-            font-size: 0.9rem;
-            min-width: 120px;
+            font-size: 0.85rem;
+            min-width: 100px;
+            font-family: 'Courier New', monospace;
         }
 
         .filter-input-group input {
             flex: 1;
-            min-width: 200px;
-            padding: 8px 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #2c3e50;
-            font-size: 0.9rem;
+            min-width: 150px;
+            padding: 6px 10px;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            font-size: 0.85rem;
             font-family: 'Courier New', monospace;
         }
 
         .filter-input-group input:focus {
             outline: none;
-            border-color: #8B5CF6;
-            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+            border-color: #ff8800;
+            box-shadow: 0 0 0 2px rgba(255, 136, 0, 0.3);
         }
 
         .clear-filter-btn {
-            padding: 8px 16px;
-            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
-            color: white;
-            border: none;
-            border-radius: 8px;
+            padding: 6px 12px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
         }
 
         .clear-filter-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+            background: rgba(0, 255, 0, 0.1);
+            color: #ff8800;
+            border-color: #ff8800;
+            box-shadow: 0 0 8px rgba(255, 136, 0, 0.3);
         }
 
         .filter-info {
@@ -955,9 +1004,9 @@
                     this.geohashFilter = '';
                     this.updateHash();
                     this.updateFilterStatus();
-                    this.displayActivities(this.notes);
-                    this.plotActivitiesOnMap(this.notes);
-                    this.zoomToShowAllActivities();
+                    this.displayNotes(this.notes);
+                    this.plotNotesOnMap(this.notes);
+                    this.zoomToGlobal();
                 });
 
 
@@ -1698,19 +1747,24 @@
                 const filteredCount = filteredActivities.length;
                 
                 statsDiv.innerHTML = `
-                    <div class="stats-section">
-                        <h3>📊 Bitchat Statistics</h3>
-                        <p><strong>${filteredCount}</strong> ${this.geohashFilter ? 'filtered' : 'total'} notes</p>
-                        <p><strong>${geoActivitiesCount}</strong> notes with geo info</p>
-                        ${this.geohashFilter ? `<p><em>Filtered from ${totalActivities} total notes</em></p>` : ''}
+                    <div class="stats-header">
+                        <h3 class="stats-title">📊 Bitchat Statistics</h3>
+                        <button class="stats-toggle" onclick="this.parentElement.parentElement.querySelector('.stats-content').classList.toggle('minimized'); this.textContent = this.textContent === '−' ? '+' : '−';">−</button>
                     </div>
-                    <div class="stats-section">
-                        <h3>📈 Note Types</h3>
-                        ${noteTypesHtml}
-                    </div>
-                    <div class="stats-section">
-                        <h3>🌐 Relays</h3>
-                        ${relayStatusHtml}
+                    <div class="stats-content">
+                        <div class="stats-section">
+                            <p><strong>${filteredCount}</strong> ${this.geohashFilter ? 'filtered' : 'total'} notes</p>
+                            <p><strong>${geoActivitiesCount}</strong> notes with geo info</p>
+                            ${this.geohashFilter ? `<p><em>Filtered from ${totalActivities} total notes</em></p>` : ''}
+                        </div>
+                        <div class="stats-section">
+                            <h3>📈 Note Types</h3>
+                            ${noteTypesHtml}
+                        </div>
+                        <div class="stats-section">
+                            <h3>🌐 Relays</h3>
+                            ${relayStatusHtml}
+                        </div>
                     </div>
                 `;
             }
@@ -2063,6 +2117,20 @@
                     // If no geo notes, zoom to world view
                     this.map.setView([0, 0], 2);
                     console.log('No geo notes found, zoomed to world view');
+                }
+            }
+
+            zoomToGlobal() {
+                // Clear any highlighted geohash rectangles
+                this.geohashRectangles.forEach(rect => this.map.removeLayer(rect));
+                this.geohashRectangles = [];
+                
+                // Always zoom to global view regardless of notes
+                if (this.map) {
+                    this.map.setView([0, 0], 1);
+                    console.log('Zoomed to global view - center: [0, 0], zoom: 1');
+                } else {
+                    console.error('Map not initialized when trying to zoom to global');
                 }
             }
 
