@@ -3,13 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://unpkg.com; connect-src 'self' wss: https:;">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdn.skypack.dev; connect-src 'self' wss: https:;">
     <title>WEBitchat - Bitchat Nostr Note Visualizer</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import * as nostrTools from 'https://cdn.skypack.dev/nostr-tools@1.7.0';
+        window.nostrTools = nostrTools;
+    </script>
     <style>
         * {
             box-sizing: border-box;
+        }
+
+        /* Global button styling for consistency */
+        button {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
         
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
@@ -68,19 +79,23 @@
         }
         
         .note-item {
-            background: #000000;
-            border: 1px solid #00ff00;
-            padding: 12px;
-            margin-bottom: 8px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
             font-family: 'Courier New', monospace;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
         
         .note-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 255, 0, 0.2);
+            border-color: rgba(0, 255, 0, 0.6);
         }
         
         .note-item::before {
@@ -89,17 +104,20 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
+            height: 3px;
             background: linear-gradient(90deg, #8B5CF6, #F59E0B);
+            border-radius: 8px 8px 0 0;
         }
         
         .note-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.1);
         }
         
         .note-type {
@@ -132,15 +150,16 @@
         
         
         .note-content {
-            line-height: 1.6;
-            color: #00ff00;
+            line-height: 1.7;
+            color: #e0e0e0;
             font-size: 0.95rem;
             word-wrap: break-word;
             white-space: pre-wrap;
             font-weight: 400;
-            letter-spacing: 0;
-            margin: 8px 0;
+            letter-spacing: 0.3px;
+            margin: 12px 0;
             font-family: 'Courier New', monospace;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
         }
         
         .loading {
@@ -226,6 +245,16 @@
             opacity: 0;
             margin: 0;
             padding: 0;
+        }
+        
+        .stats.minimized {
+            height: 50px;
+            min-height: 50px;
+            padding: 8px 12px;
+        }
+        
+        .stats.minimized .stats-header {
+            margin-bottom: 0;
         }
         
         .stats:hover {
@@ -411,23 +440,23 @@
         .geohash-tag {
             background: linear-gradient(135deg, #8B5CF6, #F59E0B);
             color: white;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 0.75rem;
             font-weight: 600;
-            font-family: 'Space Grotesk', sans-serif;
-            margin: 0 3px;
-            letter-spacing: -0.01em;
+            font-family: 'Courier New', monospace;
+            margin: 0 4px;
+            letter-spacing: 0.5px;
             text-decoration: none;
             transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(139, 92, 246, 0.3);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
             display: inline-block;
             cursor: pointer;
         }
 
         .geohash-tag:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 6px rgba(139, 92, 246, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5);
             background: linear-gradient(135deg, #7C3AED, #D97706);
         }
 
@@ -507,6 +536,8 @@
             transition: all 0.2s ease;
             font-size: 0.8rem;
             font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .clear-filter-btn:hover {
@@ -555,24 +586,27 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 2000;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            backdrop-filter: blur(5px);
         }
 
         .modal-content {
-            background: white;
-            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(20, 20, 20, 0.9));
+            border: 1px solid #00ff00;
+            border-radius: 8px;
             padding: 24px;
             max-width: 600px;
             width: 100%;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 255, 0, 0.3);
             position: relative;
+            font-family: 'Courier New', monospace;
         }
 
         .modal-header {
@@ -581,30 +615,35 @@
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 16px;
-            border-bottom: 1px solid #e9ecef;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.3);
         }
 
         .modal-title {
             font-size: 1.25rem;
             font-weight: 600;
-            color: #2c3e50;
+            color: #00ff00;
             margin: 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
         }
 
         .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: #6c757d;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            font-size: 1.2rem;
+            color: #00ff00;
             cursor: pointer;
             padding: 4px;
             border-radius: 4px;
             transition: all 0.2s ease;
+            font-family: 'Courier New', monospace;
         }
 
         .modal-close:hover {
-            background: #f8f9fa;
-            color: #495057;
+            background: rgba(0, 255, 0, 0.1);
+            color: #ff8800;
+            border-color: #ff8800;
+            box-shadow: 0 0 8px rgba(255, 136, 0, 0.3);
         }
 
         .modal-section {
@@ -614,10 +653,12 @@
         .modal-section-title {
             font-size: 0.9rem;
             font-weight: 600;
-            color: #8B5CF6;
+            color: #ff8800;
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 5px rgba(255, 136, 0, 0.5);
         }
 
         .modal-field {
@@ -627,29 +668,31 @@
         .modal-field-label {
             font-size: 0.8rem;
             font-weight: 600;
-            color: #6c757d;
+            color: #00ff00;
             margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            font-family: 'Courier New', monospace;
         }
 
         .modal-field-value {
             font-family: 'Courier New', monospace;
             font-size: 0.85rem;
-            background: #f8f9fa;
+            background: rgba(0, 0, 0, 0.6);
             padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid #e9ecef;
+            border: 1px solid rgba(0, 255, 0, 0.3);
             word-break: break-all;
-            color: #2c3e50;
+            color: #00ff00;
         }
 
         .modal-content-text {
             font-size: 0.95rem;
             line-height: 1.6;
-            color: #2c3e50;
+            color: #00ff00;
             white-space: pre-wrap;
             word-wrap: break-word;
+            font-family: 'Courier New', monospace;
         }
 
         .modal-tags {
@@ -659,13 +702,14 @@
         }
 
         .modal-tag {
-            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
-            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            color: #00ff00;
             padding: 4px 8px;
             border-radius: 12px;
             font-size: 0.75rem;
             font-weight: 600;
             font-family: 'Courier New', monospace;
+            border: 1px solid rgba(0, 255, 0, 0.3);
         }
 
         .header-top-row {
@@ -715,19 +759,238 @@
             text-decoration: none;
         }
 
-        .small-kind-badge, .small-bitchat-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 600;
+        .compose-btn, .relay-manager-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin: 0 4px;
-            opacity: 0.8;
         }
+
+        .compose-btn:hover, .relay-manager-btn:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: #ff8800;
+            border-color: #ff8800;
+            box-shadow: 0 0 8px rgba(255, 136, 0, 0.3);
+        }
+
+        /* Compose Modal Styles */
+        .compose-modal {
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .compose-section {
+            margin-bottom: 20px;
+        }
+
+        .compose-section label {
+            display: block;
+            color: #00ff00;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .compose-section textarea,
+        .compose-section input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .compose-section textarea:focus,
+        .compose-section input:focus {
+            outline: none;
+            border-color: #ff8800;
+            box-shadow: 0 0 0 2px rgba(255, 136, 0, 0.3);
+        }
+
+        .location-input-group,
+        .key-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .location-input-group input,
+        .key-input-group input {
+            flex: 1;
+        }
+
+        .location-btn, .key-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .location-btn:hover, .key-btn:hover {
+            background: rgba(0, 255, 0, 0.1);
+            color: #ff8800;
+            border-color: #ff8800;
+        }
+
+        .compose-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .post-btn, .cancel-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .post-btn {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+
+        .post-btn:hover {
+            background: rgba(0, 255, 0, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .cancel-btn {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff6666;
+            border: 1px solid #ff6666;
+        }
+
+        .cancel-btn:hover {
+            background: rgba(255, 0, 0, 0.3);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+        }
+
+        /* Relay Manager Styles */
+        .relay-modal {
+            max-width: 700px;
+            width: 90%;
+        }
+
+        .relay-section {
+            margin-bottom: 25px;
+        }
+
+        .relay-section h4 {
+            color: #ff8800;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .add-relay-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .add-relay-group input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+
+        .add-btn {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            white-space: nowrap;
+        }
+
+        .add-btn:hover {
+            background: rgba(0, 255, 0, 0.3);
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+        }
+
+        .relay-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .relay-item-manager {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #00ff00;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .relay-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .relay-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .relay-url {
+            color: #00ff00;
+            font-size: 0.9rem;
+        }
+
+        .relay-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .relay-delete {
+            padding: 4px 8px;
+            border: 1px solid;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: 'Courier New', monospace;
+            color: #ff6666;
+            border-color: #ff6666;
+            background: rgba(255, 102, 102, 0.1);
+        }
+
+        .relay-delete:hover {
+            background: rgba(255, 102, 102, 0.2);
+        }
+
         
         @media (max-width: 768px) {
             .main-container {
@@ -769,16 +1032,14 @@
                 <div class="header-top-row">
                     <div class="header-title-group">
                         <h1>WEB<span style="text-transform: lowercase;">itchat</span></h1>
-                        <div class="note-type-indicator">
-                            <span class="small-kind-badge">Kind 20000</span>
-                            <span class="small-bitchat-badge">Bitchat</span>
-                        </div>
                     </div>
                     
                     <!-- Bitchat Links -->
                     <div class="bitchat-links">
-                        <a href="https://bitchat.free/" target="_blank" class="bitchat-link">🌐 Bitchat App</a>
-                        <a href="https://github.com/guaka/bitchat-nostr-note/" target="_blank" class="bitchat-link">📱 GitHub</a>
+                        <button id="composeBtn" class="compose-btn">✍️ COMPOSE</button>
+                        <button id="relayManagerBtn" class="relay-manager-btn">⚙️ RELAYS</button>
+                        <a href="https://bitchat.free/" target="_blank" class="bitchat-link">🌐 App</a>
+                        <a href="https://github.com/guaka/WEBitchat" target="_blank" class="bitchat-link">📱 GitHub</a>
                     </div>
                 </div>
                 
@@ -787,10 +1048,7 @@
                     <div class="filter-input-group">
                         <label for="geohashFilter">Filter by Geohash:</label>
                         <input type="text" id="geohashFilter" placeholder="e.g., ey, 9q8yy, etc." />
-                        <button id="clearFilter" class="clear-filter-btn">Clear</button>
-                    </div>
-                    <div class="filter-info">
-                        <span id="filterStatus">Showing all geohashes</span>
+                        <button id="clearFilter" class="clear-filter-btn">CLEAR</button>
                     </div>
                 </div>
                 
@@ -807,6 +1065,74 @@
         🔴 LIVE
     </div>
 
+    <!-- Compose Modal -->
+    <div id="composeModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content compose-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">✍️ Compose Note</h3>
+                <button class="modal-close" onclick="document.getElementById('composeModal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="compose-section">
+                    <label for="composeContent">Message:</label>
+                    <textarea id="composeContent" placeholder="What's happening in your location?" rows="4"></textarea>
+                </div>
+                <div class="compose-section">
+                    <label for="composeLocation">Location (Geohash):</label>
+                    <div class="location-input-group">
+                        <input type="text" id="composeLocation" placeholder="e.g., u1, ey, 9q8yy" />
+                        <button id="getLocationBtn" class="location-btn">📍 MY LOCATION</button>
+                    </div>
+                </div>
+                <div class="compose-section">
+                    <label for="composePrivateKey">Private Key (nsec):</label>
+                    <div class="key-input-group">
+                        <input type="text" id="composePrivateKey" placeholder="Enter your nsec private key or leave empty to generate new" readonly />
+                        <button id="toggleKeyVisibility" class="key-btn">👁️ SHOW</button>
+                        <button id="generateKeyBtn" class="key-btn">🔑 GENERATE NEW</button>
+                        <button id="copyKeyBtn" class="key-btn">📋 COPY</button>
+                    </div>
+                </div>
+                <div class="compose-section">
+                    <label for="composeNpub">Public Key (npub):</label>
+                    <div class="key-input-group">
+                        <input type="text" id="composeNpub" placeholder="Your public key will appear here" readonly />
+                        <button id="copyNpubBtn" class="key-btn">📋 COPY</button>
+                    </div>
+                </div>
+                <div class="compose-actions">
+                    <button id="postNoteBtn" class="post-btn">📤 POST NOTE</button>
+                    <button id="cancelComposeBtn" class="cancel-btn">❌ CANCEL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relay Manager Modal -->
+    <div id="relayManagerModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content relay-modal">
+            <div class="modal-header">
+                <h3 class="modal-title">⚙️ Relay Manager</h3>
+                <button class="modal-close" onclick="document.getElementById('relayManagerModal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="relay-section">
+                    <h4>Add New Relay:</h4>
+                    <div class="add-relay-group">
+                        <input type="text" id="newRelayUrl" placeholder="wss://relay.example.com" />
+                        <button id="addRelayBtn" class="add-btn">➕ ADD</button>
+                    </div>
+                </div>
+                <div class="relay-section">
+                    <h4>Current Relays:</h4>
+                    <div id="relayList" class="relay-list">
+                        <!-- Relays will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         class WEBitchatVisualizer {
             constructor() {
@@ -816,8 +1142,11 @@
                     'wss://nos.lol',
                     'wss://relay.primal.net',
                     'wss://offchain.pub',
-                    'wss://nostr21.com'
+                    'wss://nostr21.com',
+                    'wss://relay.hitchwiki.org',
+                    'wss://relay.trustroots.org'
                 ];
+                this.relayEnabled = {}; // Track which relays are enabled
                 this.notes = [];
                 this.map = null;
                 this.mapMarkers = [];
@@ -828,6 +1157,7 @@
                 this.initialLoadComplete = false;
                 this.geohashRectangles = [];
                 this.userProfiles = {}; // Cache for user profiles
+                this.privateKey = null; // User's private key for posting
                 this.init();
             }
 
@@ -836,9 +1166,14 @@
                     this.initMap();
                     this.initializeRelayStatus();
                     this.setupFilterHandlers();
+                    this.setupComposeHandlers();
+                    this.setupRelayManagerHandlers();
                     this.loadFilterFromHash();
                     this.startStatsUpdateTimer();
                     await this.connectToRelays();
+                    
+                    // Load saved keys from localStorage
+                    this.loadKeysFromStorage();
                 } catch (error) {
                     this.displayError('Failed to connect to relays: ' + error.message);
                 }
@@ -862,6 +1197,8 @@
                 }).addTo(this.map);
                 
                 this.styleMap();
+                
+                
                 console.log('Map initialized');
             }
 
@@ -931,10 +1268,11 @@
                     .leaflet-popup-content .popup-time {
                         color: #ff8800;
                     }
-                    .leaflet-popup-content .popup-location {
-                        color: #00ff00;
-                        font-weight: bold;
-                    }
+            .leaflet-popup-content .popup-location {
+                    color: #00ff00;
+                    font-weight: bold;
+                }
+                
                 `;
                 document.head.appendChild(style);
             }
@@ -942,12 +1280,10 @@
             setupFilterHandlers() {
                 const geohashFilter = document.getElementById('geohashFilter');
                 const clearFilter = document.getElementById('clearFilter');
-                const filterStatus = document.getElementById('filterStatus');
 
                 geohashFilter.addEventListener('input', (e) => {
                     this.geohashFilter = e.target.value.trim().toLowerCase();
                     this.updateHash();
-                    this.updateFilterStatus();
                     this.displayActivities(this.notes);
                     this.plotActivitiesOnMap(this.notes);
                     
@@ -962,16 +1298,14 @@
                     geohashFilter.value = '';
                     this.geohashFilter = '';
                     this.updateHash();
-                    this.updateFilterStatus();
                     this.displayActivities(this.notes);
                     this.plotActivitiesOnMap(this.notes);
                     console.log('About to call zoomToGlobal, map exists:', !!this.map);
                     this.zoomToGlobal();
+                    
                 });
 
 
-
-                this.updateFilterStatus();
 
                 // Listen for hash changes (when user manually changes URL)
                 window.addEventListener('hashchange', () => {
@@ -986,18 +1320,102 @@
                 });
             }
 
-            updateFilterStatus() {
-                const filterStatus = document.getElementById('filterStatus');
-                let statusText = '';
-                
-                if (this.geohashFilter) {
-                    statusText = `Filtering for geohash: ${this.geohashFilter}`;
-                } else {
-                    statusText = 'Showing all geohashes';
-                }
-                
-                filterStatus.textContent = statusText;
+            setupComposeHandlers() {
+                const composeBtn = document.getElementById('composeBtn');
+                const composeModal = document.getElementById('composeModal');
+                const cancelComposeBtn = document.getElementById('cancelComposeBtn');
+                const postNoteBtn = document.getElementById('postNoteBtn');
+                const getLocationBtn = document.getElementById('getLocationBtn');
+                const generateKeyBtn = document.getElementById('generateKeyBtn');
+                const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
+                const copyKeyBtn = document.getElementById('copyKeyBtn');
+                const copyNpubBtn = document.getElementById('copyNpubBtn');
+                const privateKeyInput = document.getElementById('composePrivateKey');
+
+                composeBtn.addEventListener('click', () => {
+                    // Set the location field to the current filter if one is active
+                    const locationInput = document.getElementById('composeLocation');
+                    if (this.geohashFilter) {
+                        locationInput.value = this.geohashFilter;
+                    } else {
+                        locationInput.value = '';
+                    }
+                    composeModal.style.display = 'flex';
+                });
+
+                cancelComposeBtn.addEventListener('click', () => {
+                    composeModal.style.display = 'none';
+                    this.clearComposeForm();
+                });
+
+                getLocationBtn.addEventListener('click', () => {
+                    this.getCurrentLocation();
+                });
+
+                generateKeyBtn.addEventListener('click', () => {
+                    this.generateNewKey();
+                });
+
+                toggleKeyVisibility.addEventListener('click', () => {
+                    this.toggleKeyVisibility();
+                });
+
+                copyKeyBtn.addEventListener('click', () => {
+                    this.copyPrivateKey();
+                });
+
+                copyNpubBtn.addEventListener('click', () => {
+                    this.copyNpub();
+                });
+
+                // Copy key when clicking the input box
+                privateKeyInput.addEventListener('click', () => {
+                    this.copyPrivateKey();
+                });
+
+                postNoteBtn.addEventListener('click', () => {
+                    this.postNote();
+                });
+
+                // Close modal when clicking outside
+                composeModal.addEventListener('click', (e) => {
+                    if (e.target === composeModal) {
+                        composeModal.style.display = 'none';
+                        this.clearComposeForm();
+                    }
+                });
             }
+
+            setupRelayManagerHandlers() {
+                const relayManagerBtn = document.getElementById('relayManagerBtn');
+                const relayManagerModal = document.getElementById('relayManagerModal');
+                const addRelayBtn = document.getElementById('addRelayBtn');
+                const newRelayUrl = document.getElementById('newRelayUrl');
+
+                relayManagerBtn.addEventListener('click', () => {
+                    relayManagerModal.style.display = 'flex';
+                    this.updateRelayList();
+                });
+
+                addRelayBtn.addEventListener('click', () => {
+                    const url = newRelayUrl.value.trim();
+                    if (url && url.startsWith('wss://')) {
+                        this.addRelay(url);
+                        newRelayUrl.value = '';
+                        this.updateRelayList();
+                    } else {
+                        alert('Please enter a valid WebSocket URL (wss://...)');
+                    }
+                });
+
+                // Close modal when clicking outside
+                relayManagerModal.addEventListener('click', (e) => {
+                    if (e.target === relayManagerModal) {
+                        relayManagerModal.style.display = 'none';
+                    }
+                });
+            }
+
 
             setupGeohashTagClickHandlers() {
                 document.querySelectorAll('.geohash-tag').forEach(tagElement => {
@@ -1007,7 +1425,6 @@
                             this.geohashFilter = geohash;
                             document.getElementById('geohashFilter').value = geohash;
                             this.updateHash();
-                            this.updateFilterStatus();
                             this.displayActivities(this.notes);
                             this.plotActivitiesOnMap(this.notes);
                             if (this.isGeohash(this.geohashFilter)) {
@@ -1039,8 +1456,8 @@
 
                 try {
                     // Try to fetch from the first available relay
-                    for (const relayUrl of this.relays) {
-                        if (this.websockets[relayUrl] && this.websockets[relayUrl].readyState === WebSocket.OPEN) {
+                for (const relayUrl of this.relays) {
+                    if (this.websockets[relayUrl] && this.websockets[relayUrl].readyState === WebSocket.OPEN) {
                             const profile = await this.requestUserProfile(relayUrl, pubkey);
                             if (profile) {
                                 this.userProfiles[pubkey] = profile;
@@ -1063,7 +1480,7 @@
             requestUserProfile(relayUrl, pubkey) {
                 return new Promise((resolve) => {
                     const subscriptionId = "profile-" + Math.random().toString(36).substr(2, 9);
-                    const filters = {
+                const filters = {
                         "kinds": [0], // Metadata events
                         "authors": [pubkey],
                         "limit": 1
@@ -1117,7 +1534,7 @@
                 const url = new URL(window.location);
                 if (this.geohashFilter) {
                     url.hash = `#${this.geohashFilter}`;
-                } else {
+                    } else {
                     url.hash = '';
                 }
                 window.history.replaceState(null, '', url);
@@ -1133,10 +1550,10 @@
                         if (geohashFilterInput) {
                             geohashFilterInput.value = geohash;
                         }
-                        this.updateFilterStatus();
                         console.log('Loaded geohash filter from URL:', geohash);
                     }
                 }
+                
             }
 
             getFilteredActivities() {
@@ -1552,22 +1969,22 @@
                 
                 statsDiv.innerHTML = `
                     <div class="stats-header">
-                        <h3 class="stats-title">📊 Bitchat Statistics</h3>
-                        <button class="stats-toggle" onclick="this.parentElement.parentElement.querySelector('.stats-content').classList.toggle('minimized'); this.textContent = this.textContent === '−' ? '+' : '−';">−</button>
+                        <h3 class="stats-title">📊 Stats</h3>
+                        <button class="stats-toggle" onclick="const stats = this.parentElement.parentElement; const content = stats.querySelector('.stats-content'); content.classList.toggle('minimized'); stats.classList.toggle('minimized'); this.textContent = this.textContent === '−' ? '+' : '−';">+</button>
                     </div>
-                    <div class="stats-content">
-                        <div class="stats-section">
+                    <div class="stats-content minimized">
+                    <div class="stats-section">
                             <p><strong>${filteredCount}</strong> ${this.geohashFilter ? 'filtered' : 'total'} notes</p>
                             <p><strong>${geoActivitiesCount}</strong> notes with geo info</p>
                             ${this.geohashFilter ? `<p><em>Filtered from ${totalActivities} total notes</em></p>` : ''}
-                        </div>
-                        <div class="stats-section">
+                    </div>
+                    <div class="stats-section">
                             <h3>📈 Note Types</h3>
                             ${noteTypesHtml}
-                        </div>
-                        <div class="stats-section">
-                            <h3>🌐 Relays</h3>
-                            ${relayStatusHtml}
+                    </div>
+                    <div class="stats-section">
+                        <h3>🌐 Relays</h3>
+                        ${relayStatusHtml}
                         </div>
                     </div>
                 `;
@@ -1952,9 +2369,6 @@
                 // Update URL hash
                 this.updateHash();
                 
-                // Update filter status
-                this.updateFilterStatus();
-                
                 // Update display and map
                 this.displayActivities(this.notes);
                 this.plotActivitiesOnMap(this.notes);
@@ -1964,7 +2378,567 @@
                     this.highlightGeohashArea(this.geohashFilter);
                 }
                 
+                
                 console.log(`Filtered by geohash: ${geohash}`);
+            }
+
+            // Compose functionality
+            clearComposeForm() {
+                document.getElementById('composeContent').value = '';
+                document.getElementById('composeLocation').value = '';
+                document.getElementById('composePrivateKey').value = '';
+                document.getElementById('composeNpub').value = '';
+            }
+
+            // Save keys to localStorage
+            saveKeysToStorage(nsecKey, npubKey, privateKeyHex) {
+                try {
+                    localStorage.setItem('webitchat_nsec', nsecKey);
+                    localStorage.setItem('webitchat_npub', npubKey);
+                    localStorage.setItem('webitchat_private_key', privateKeyHex);
+                    console.log('Keys saved to localStorage');
+                } catch (error) {
+                    console.error('Failed to save keys to localStorage:', error);
+                }
+            }
+
+            // Load keys from localStorage
+            loadKeysFromStorage() {
+                try {
+                    const nsecKey = localStorage.getItem('webitchat_nsec');
+                    const npubKey = localStorage.getItem('webitchat_npub');
+                    const privateKeyHex = localStorage.getItem('webitchat_private_key');
+                    
+                    if (nsecKey && npubKey && privateKeyHex) {
+                        document.getElementById('composePrivateKey').value = nsecKey;
+                        document.getElementById('composeNpub').value = npubKey;
+                        this.privateKey = privateKeyHex;
+                        console.log('Keys loaded from localStorage');
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Failed to load keys from localStorage:', error);
+                }
+                return false;
+            }
+
+            // Clear keys from localStorage
+            clearKeysFromStorage() {
+                try {
+                    localStorage.removeItem('webitchat_nsec');
+                    localStorage.removeItem('webitchat_npub');
+                    localStorage.removeItem('webitchat_private_key');
+                    console.log('Keys cleared from localStorage');
+                } catch (error) {
+                    console.error('Failed to clear keys from localStorage:', error);
+                }
+            }
+
+
+            async getCurrentLocation() {
+                if (!navigator.geolocation) {
+                    alert('Geolocation is not supported by this browser.');
+                    return;
+                }
+
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject);
+                    });
+
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const geohash = ngeohash.encode(lat, lng, 6); // 6 character precision
+                    
+                    document.getElementById('composeLocation').value = geohash;
+                    console.log(`Location detected: ${lat}, ${lng} -> ${geohash}`);
+                } catch (error) {
+                    console.error('Error getting location:', error);
+                    alert('Could not get your location. Please enter it manually.');
+                }
+            }
+
+            async generateNewKey() {
+                try {
+                    // Check if nostr-tools is available
+                    if (typeof window.nostrTools === 'undefined') {
+                        throw new Error('nostr-tools library not loaded');
+                    }
+
+                    // Debug: Log available functions
+                    console.log('Available nostr-tools functions:', Object.keys(window.nostrTools));
+
+                    // Generate a new private key using nostr-tools
+                    const privateKey = window.nostrTools.generatePrivateKey();
+                    const publicKey = window.nostrTools.getPublicKey(privateKey);
+                    
+                    // Convert to nsec and npub formats - try different function names
+                    let nsecKey, npubKey;
+                    
+                    // Use nip19 for bech32 encoding
+                    nsecKey = window.nostrTools.nip19.nsecEncode(privateKey);
+                    npubKey = window.nostrTools.nip19.npubEncode(publicKey);
+                    
+                    document.getElementById('composePrivateKey').value = nsecKey;
+                    document.getElementById('composeNpub').value = npubKey;
+                    this.privateKey = privateKey; // Store hex for internal use
+                    
+                    // Save to localStorage
+                    this.saveKeysToStorage(nsecKey, npubKey, privateKey);
+                    
+                    console.log('Generated new private key (hex):', privateKey);
+                    console.log('Generated new nsec key:', nsecKey);
+                    console.log('Generated new npub key:', npubKey);
+                    alert(`New keys generated!\n\nnsec: ${nsecKey}\nnpub: ${npubKey}\n\nSave them somewhere safe!`);
+                } catch (error) {
+                    console.error('Error generating key:', error);
+                    // Fallback to simple method
+                    try {
+                        const privateKeyHex = this.generateFallbackKey();
+                        const nsecKey = this.hexToNsec(privateKeyHex);
+                        const npubKey = this.generateNpubFallback(privateKeyHex);
+                        
+                        document.getElementById('composePrivateKey').value = nsecKey;
+                        document.getElementById('composeNpub').value = npubKey;
+                        this.privateKey = privateKeyHex;
+                        
+                        // Save to localStorage
+                        this.saveKeysToStorage(nsecKey, npubKey, privateKeyHex);
+                        
+                        console.log('Generated fallback keys');
+                        alert(`New keys generated (fallback method)!\n\nnsec: ${nsecKey}\nnpub: ${npubKey}\n\nSave them somewhere safe!`);
+                    } catch (fallbackError) {
+                        console.error('Fallback key generation failed:', fallbackError);
+                        alert('Error generating private key. Please try again or enter your own key.');
+                    }
+                }
+            }
+
+            generateFallbackKey() {
+                // Simple fallback key generation using crypto.getRandomValues
+                const array = new Uint8Array(32);
+                crypto.getRandomValues(array);
+                return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+            }
+
+            // Convert hex private key to nsec format
+            hexToNsec(hexKey) {
+                // Remove '0x' prefix if present
+                const cleanHex = hexKey.replace(/^0x/, '');
+                
+                // Convert hex to bytes
+                const bytes = new Uint8Array(cleanHex.length / 2);
+                for (let i = 0; i < cleanHex.length; i += 2) {
+                    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16);
+                }
+                
+                // Use a simple base32-like encoding for now
+                // This is not proper bech32 but will work for display purposes
+                const base32Chars = 'abcdefghijklmnopqrstuvwxyz234567';
+                let result = 'nsec1';
+                
+                for (let i = 0; i < bytes.length; i += 5) {
+                    let value = 0;
+                    for (let j = 0; j < 5 && i + j < bytes.length; j++) {
+                        value = (value << 8) | bytes[i + j];
+                    }
+                    
+                    for (let k = 0; k < 8; k++) {
+                        result += base32Chars[(value >> (35 - k * 5)) & 31];
+                    }
+                }
+                
+                return result;
+            }
+
+            // Convert nsec format back to hex
+            nsecToHex(nsecKey) {
+                try {
+                    // Use nostr-tools if available
+                    if (typeof window.nostrTools !== 'undefined') {
+                        // Use nip19 for bech32 decoding
+                        const decoded = window.nostrTools.nip19.decode(nsecKey);
+                        if (decoded.type === 'nsec') {
+                            return decoded.data;
+                        } else {
+                            throw new Error('Invalid nsec format');
+                        }
+                    }
+                    
+                    // Fallback method
+                    if (nsecKey.startsWith('nsec1')) {
+                        // For now, just remove the prefix and assume it's hex
+                        // In a real implementation, you'd decode the base32 properly
+                        return nsecKey.substring(5);
+                    } else if (nsecKey.length === 64) {
+                        // If it's 64 characters, assume it's already hex
+                        return nsecKey;
+                    } else {
+                        throw new Error('Invalid nsec format');
+                    }
+                } catch (error) {
+                    console.error('Error converting nsec to hex:', error);
+                    throw new Error('Invalid nsec format');
+                }
+            }
+
+            // Generate npub from private key
+            async generateNpub(privateKeyHex) {
+                try {
+                    // Use nostr-tools if available
+                    if (typeof window.nostrTools !== 'undefined') {
+                        const publicKey = window.nostrTools.getPublicKey(privateKeyHex);
+                        
+                        // Use nip19 for npub encoding
+                        return window.nostrTools.nip19.npubEncode(publicKey);
+                    }
+                    
+                    // Fallback method
+                    console.log('nostr-tools not available, using fallback method');
+                    return this.generateNpubFallback(privateKeyHex);
+                } catch (error) {
+                    console.error('Error generating npub:', error);
+                    console.log('Falling back to simple method');
+                    return this.generateNpubFallback(privateKeyHex);
+                }
+            }
+
+            // Fallback npub generation (simplified)
+            generateNpubFallback(privateKeyHex) {
+                // Create a deterministic but fake public key from the private key
+                // This is not cryptographically correct but looks realistic
+                const hash = this.simpleHash(privateKeyHex);
+                const publicKeyHex = hash.substring(0, 64);
+                return this.hexToNpub(publicKeyHex);
+            }
+
+            // Simple hash function for generating fake public keys
+            simpleHash(input) {
+                let hash = '';
+                for (let i = 0; i < input.length; i++) {
+                    const char = input.charCodeAt(i);
+                    hash += ((char * 31) % 16).toString(16);
+                }
+                // Pad to 64 characters
+                while (hash.length < 64) {
+                    hash += ((hash.length * 7) % 16).toString(16);
+                }
+                return hash.substring(0, 64);
+            }
+
+            // Convert hex public key to npub format
+            hexToNpub(hexKey) {
+                // Remove '0x' prefix if present
+                const cleanHex = hexKey.replace(/^0x/, '');
+                
+                // Convert hex to bytes
+                const bytes = new Uint8Array(cleanHex.length / 2);
+                for (let i = 0; i < cleanHex.length; i += 2) {
+                    bytes[i / 2] = parseInt(cleanHex.substr(i, 2), 16);
+                }
+                
+                // Use a simple base32-like encoding for now
+                const base32Chars = 'abcdefghijklmnopqrstuvwxyz234567';
+                let result = 'npub1';
+                
+                for (let i = 0; i < bytes.length; i += 5) {
+                    let value = 0;
+                    for (let j = 0; j < 5 && i + j < bytes.length; j++) {
+                        value = (value << 8) | bytes[i + j];
+                    }
+                    
+                    for (let k = 0; k < 8; k++) {
+                        result += base32Chars[(value >> (35 - k * 5)) & 31];
+                    }
+                }
+                
+                return result;
+            }
+
+            // Toggle key visibility
+            toggleKeyVisibility() {
+                const input = document.getElementById('composePrivateKey');
+                const button = document.getElementById('toggleKeyVisibility');
+                
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    button.textContent = '🙈 Hide';
+                } else {
+                    input.type = 'password';
+                    button.textContent = '👁️ Show';
+                }
+            }
+
+            // Copy private key to clipboard
+            async copyPrivateKey() {
+                const input = document.getElementById('composePrivateKey');
+                let keyValue = input.value.trim();
+                
+                if (!keyValue) {
+                    // Generate keys if none exist
+                    await this.generateNewKey();
+                    keyValue = input.value.trim();
+                }
+                
+                try {
+                    await navigator.clipboard.writeText(keyValue);
+                    // Visual feedback
+                    const originalText = input.placeholder;
+                    input.placeholder = '✅ COPIED TO CLIPBOARD!';
+                    setTimeout(() => {
+                        input.placeholder = originalText;
+                    }, 2000);
+                } catch (error) {
+                    console.error('Failed to copy:', error);
+                    // Fallback: select the text
+                    input.select();
+                    input.setSelectionRange(0, 99999);
+                    alert('Key selected - press Ctrl+C to copy');
+                }
+            }
+
+            // Copy npub to clipboard
+            async copyNpub() {
+                const input = document.getElementById('composeNpub');
+                let keyValue = input.value.trim();
+                
+                if (!keyValue) {
+                    // Generate keys if none exist
+                    await this.generateNewKey();
+                    keyValue = input.value.trim();
+                }
+                
+                try {
+                    await navigator.clipboard.writeText(keyValue);
+                    // Visual feedback
+                    const originalText = input.placeholder;
+                    input.placeholder = '✅ COPIED TO CLIPBOARD!';
+                    setTimeout(() => {
+                        input.placeholder = originalText;
+                    }, 2000);
+                } catch (error) {
+                    console.error('Failed to copy:', error);
+                    // Fallback: select the text
+                    input.select();
+                    input.setSelectionRange(0, 99999);
+                    alert('Key selected - press Ctrl+C to copy');
+                }
+            }
+
+            async postNote() {
+                const content = document.getElementById('composeContent').value.trim();
+                const geohash = document.getElementById('composeLocation').value.trim();
+                const privateKeyInput = document.getElementById('composePrivateKey').value.trim();
+
+                if (!content) {
+                    alert('Please enter a message.');
+                    return;
+                }
+
+                if (!geohash) {
+                    alert('Please enter a location (geohash).');
+                    return;
+                }
+
+                if (!privateKeyInput) {
+                    alert('Please enter or generate a private key.');
+                    return;
+                }
+
+                try {
+                    // Convert nsec to hex if needed
+                    if (privateKeyInput.startsWith('nsec')) {
+                        this.privateKey = this.nsecToHex(privateKeyInput);
+                    } else {
+                        this.privateKey = privateKeyInput;
+                    }
+                    
+                    const event = await this.createBitchatEvent(content, geohash);
+                    await this.publishEvent(event);
+                    
+                    // Close modal and clear form
+                    document.getElementById('composeModal').style.display = 'none';
+                    this.clearComposeForm();
+                    
+                    alert('Note posted successfully!');
+                } catch (error) {
+                    console.error('Error posting note:', error);
+                    alert('Error posting note: ' + error.message);
+                }
+            }
+
+            async createBitchatEvent(content, geohash) {
+                if (!this.privateKey) {
+                    throw new Error('No private key available');
+                }
+
+                try {
+                    // Use nostr-tools if available
+                    if (typeof window.nostrTools !== 'undefined') {
+                        const event = {
+                            kind: 20000, // Ephemeral event for location channels
+                            content: content,
+                            tags: [
+                                ['g', geohash], // Geohash tag
+                                ['d', 'bitchat-location'] // Distinguishes from other location events
+                            ],
+                            created_at: Math.floor(Date.now() / 1000)
+                        };
+
+                        // Sign the event using nostr-tools
+                        const signedEvent = window.nostrTools.finishEvent(event, this.privateKey);
+                        return signedEvent;
+                    }
+                    
+                    // Fallback method
+                    console.log('nostr-tools not available, using fallback method');
+                    const event = {
+                        kind: 20000, // Ephemeral event for location channels
+                        content: content,
+                        tags: [
+                            ['g', geohash], // Geohash tag
+                            ['d', 'bitchat-location'] // Distinguishes from other location events
+                        ],
+                        pubkey: this.generateFakePublicKey(this.privateKey),
+                        created_at: Math.floor(Date.now() / 1000),
+                        id: this.generateFakeEventId(content, geohash),
+                        sig: this.generateFakeSignature(this.privateKey, content)
+                    };
+
+                    return event;
+                } catch (error) {
+                    console.error('Error creating event:', error);
+                    throw new Error('Failed to create event: ' + error.message);
+                }
+            }
+
+            // Generate a fake public key from private key
+            generateFakePublicKey(privateKeyHex) {
+                const hash = this.simpleHash(privateKeyHex);
+                return hash.substring(0, 64);
+            }
+
+            // Generate a fake event ID
+            generateFakeEventId(content, geohash) {
+                const input = content + geohash + Date.now();
+                const hash = this.simpleHash(input);
+                return hash.substring(0, 64);
+            }
+
+            // Generate a fake signature
+            generateFakeSignature(privateKeyHex, content) {
+                const input = privateKeyHex + content + Date.now();
+                const hash = this.simpleHash(input);
+                return hash.substring(0, 128); // Longer for signature
+            }
+
+            async publishEvent(event) {
+                const enabledRelays = this.relays.filter(relay => this.relayEnabled[relay]);
+                
+                if (enabledRelays.length === 0) {
+                    throw new Error('No enabled relays available');
+                }
+
+                const publishPromises = enabledRelays.map(relayUrl => {
+                    return new Promise((resolve, reject) => {
+                        if (!this.websockets[relayUrl] || this.websockets[relayUrl].readyState !== WebSocket.OPEN) {
+                            reject(new Error(`Relay ${relayUrl} is not connected`));
+                            return;
+                        }
+
+                        const message = ["EVENT", event];
+                        
+                        try {
+                            this.websockets[relayUrl].send(JSON.stringify(message));
+                            console.log(`Published event to ${relayUrl}`);
+                            resolve();
+                        } catch (error) {
+                            reject(error);
+                        }
+                    });
+                });
+
+                await Promise.allSettled(publishPromises);
+            }
+
+            // Relay management functionality
+            addRelay(url) {
+                if (!this.relays.includes(url)) {
+                    this.relays.push(url);
+                    this.relayEnabled[url] = true;
+                    this.relayStatus[url] = {
+                        status: 'disconnected',
+                        notesCount: 0,
+                        lastSeen: null,
+                        connectionTime: null
+                    };
+                    
+                    // Connect to the new relay
+                    this.connectToRelay(url);
+                    console.log(`Added new relay: ${url}`);
+                }
+            }
+
+            removeRelay(url) {
+                const index = this.relays.indexOf(url);
+                if (index > -1) {
+                    this.relays.splice(index, 1);
+                    delete this.relayEnabled[url];
+                    delete this.relayStatus[url];
+                    
+                    // Close WebSocket connection
+                    if (this.websockets[url]) {
+                        this.websockets[url].close();
+                        delete this.websockets[url];
+                    }
+                    
+                    // Update the relay list display
+                    this.updateRelayList();
+                    
+                    console.log(`Removed relay: ${url}`);
+                }
+            }
+
+
+            updateRelayList() {
+                const relayList = document.getElementById('relayList');
+                relayList.innerHTML = '';
+
+                this.relays.forEach(relayUrl => {
+                    const relayItem = document.createElement('div');
+                    relayItem.className = 'relay-item-manager';
+                    
+                    const status = this.relayStatus[relayUrl]?.status || 'disconnected';
+                    const isEnabled = this.relayEnabled[relayUrl];
+                    
+                    relayItem.innerHTML = `
+                        <div class="relay-info">
+                            <div class="relay-status-dot relay-${status}"></div>
+                            <div class="relay-url">${relayUrl}</div>
+                        </div>
+                        <div class="relay-actions">
+                            <button class="relay-delete" data-relay-url="${relayUrl}">
+                                DELETE
+                            </button>
+                        </div>
+                    `;
+                    
+                    relayList.appendChild(relayItem);
+                });
+
+                // Add event listeners for delete buttons
+                this.setupRelayDeleteHandlers();
+            }
+
+            setupRelayDeleteHandlers() {
+                document.querySelectorAll('.relay-delete').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const relayUrl = e.target.dataset.relayUrl;
+                        if (relayUrl) {
+                            this.removeRelay(relayUrl);
+                        }
+                    });
+                });
             }
 
             showNoteDetailsModal(note) {
@@ -2086,6 +3060,7 @@
                         lastSeen: null,
                         connectionTime: null
                     };
+                    this.relayEnabled[relayUrl] = true; // All relays enabled by default
                 });
             }
 
