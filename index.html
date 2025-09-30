@@ -547,39 +547,6 @@
             font-weight: 500;
         }
 
-        .load-more-container {
-            text-align: center;
-            margin: 20px 0;
-            padding: 20px;
-        }
-
-        .load-more-btn {
-            background: linear-gradient(135deg, #8B5CF6, #F59E0B);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-        }
-
-        .load-more-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-        }
-
-        .load-more-btn:active {
-            transform: translateY(0);
-        }
-
-        .load-more-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
 
         /* Nostr Note Details Modal */
         .modal-overlay {
@@ -831,10 +798,6 @@
                     <div class="loading">Loading Bitchat note from Nostr relays...</div>
                 </div>
                 
-                <!-- Load More Button -->
-                <div id="loadMoreContainer" class="load-more-container" style="display: none;">
-                    <button id="loadMoreBtn" class="load-more-btn">Load More Notes</button>
-                </div>
             </div>
         </div>
     </div>
@@ -862,11 +825,7 @@
                 this.websockets = {};
                 this.subscriptionIds = {};
                 this.geohashFilter = '';
-                this.loadMoreSubscriptionIds = {};
-                this.isLoadingMore = false;
                 this.initialLoadComplete = false;
-                this.loadMoreRequestsSent = 0;
-                this.loadMoreRequestsCompleted = 0;
                 this.geohashRectangles = [];
                 this.userProfiles = {}; // Cache for user profiles
                 this.init();
@@ -984,7 +943,6 @@
                 const geohashFilter = document.getElementById('geohashFilter');
                 const clearFilter = document.getElementById('clearFilter');
                 const filterStatus = document.getElementById('filterStatus');
-                const loadMoreBtn = document.getElementById('loadMoreBtn');
 
                 geohashFilter.addEventListener('input', (e) => {
                     this.geohashFilter = e.target.value.trim().toLowerCase();
@@ -1000,20 +958,18 @@
                 });
 
                 clearFilter.addEventListener('click', () => {
+                    console.log('Clear filter clicked');
                     geohashFilter.value = '';
                     this.geohashFilter = '';
                     this.updateHash();
                     this.updateFilterStatus();
-                    this.displayNotes(this.notes);
-                    this.plotNotesOnMap(this.notes);
+                    this.displayActivities(this.notes);
+                    this.plotActivitiesOnMap(this.notes);
+                    console.log('About to call zoomToGlobal, map exists:', !!this.map);
                     this.zoomToGlobal();
                 });
 
 
-                loadMoreBtn.addEventListener('click', () => {
-                    console.log('Load more button clicked!');
-                    this.loadMoreNotes();
-                });
 
                 this.updateFilterStatus();
 
@@ -1202,146 +1158,9 @@
                 return filtered;
             }
 
-            showLoadMoreButton() {
-                console.log('showLoadMoreButton called');
-                const loadMoreContainer = document.getElementById('loadMoreContainer');
-                if (loadMoreContainer) {
-                    loadMoreContainer.style.display = 'block';
-                    console.log('Load more button container shown');
-                } else {
-                    console.error('Load more container not found!');
-                }
-            }
-
-            updateLoadMoreButton() {
-                const loadMoreBtn = document.getElementById('loadMoreBtn');
-                if (loadMoreBtn) {
-                    loadMoreBtn.disabled = this.isLoadingMore;
-                    if (this.isLoadingMore) {
-                        loadMoreBtn.textContent = `Loading... (${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent})`;
-                    } else {
-                        loadMoreBtn.textContent = 'Load More Notes';
-                    }
-                }
-            }
-
-            loadMoreNotes() {
-                console.log('loadMoreNotes called, isLoadingMore:', this.isLoadingMore);
-                
-                if (this.isLoadingMore) {
-                    console.log('Already loading more, ignoring request');
-                    return;
-                }
-                
-                this.isLoadingMore = true;
-                this.updateLoadMoreButton();
-                
-                console.log('Loading more notes...');
-                console.log('Current notes count:', this.notes.length);
-                
-                // Find the oldest note to use as the "until" parameter
-                const oldestNote = this.notes.reduce((oldest, current) => 
-                    current.created_at < oldest.created_at ? current : oldest, this.notes[0]);
-                
-                const untilTimestamp = oldestNote ? oldestNote.created_at - 1 : Math.floor(Date.now() / 1000);
-                console.log('Oldest note timestamp:', oldestNote?.created_at, 'Until timestamp:', untilTimestamp);
-                
-                // Clear previous load more subscription IDs
-                this.closeAllLoadMoreSubscriptions();
-                this.loadMoreRequestsSent = 0;
-                this.loadMoreRequestsCompleted = 0;
-                
-                // Request more events from each relay
-                for (const relayUrl of this.relays) {
-                    if (this.websockets[relayUrl] && this.websockets[relayUrl].readyState === WebSocket.OPEN) {
-                        console.log(`Requesting more events from ${relayUrl}`);
-                        this.requestMoreEvents(relayUrl, untilTimestamp);
-                        this.loadMoreRequestsSent++;
-                    } else {
-                        console.log(`Skipping ${relayUrl} - not connected`);
-                    }
-                }
-                
-                console.log(`Sent ${this.loadMoreRequestsSent} load more requests`);
-                
-                // If no requests were sent, reset loading state
-                if (this.loadMoreRequestsSent === 0) {
-                    console.log('No requests sent, resetting loading state');
-                    this.isLoadingMore = false;
-                    this.updateLoadMoreButton();
-                } else {
-                    // Set a timeout fallback in case EOSE doesn't come through
-                    setTimeout(() => {
-                        if (this.isLoadingMore) {
-                            console.log('Load more timeout - forcing completion');
-                            this.isLoadingMore = false;
-                            this.updateLoadMoreButton();
-                        }
-                    }, 15000); // 15 second timeout
-                }
-            }
-
-            requestMoreEvents(relayUrl, untilTimestamp) {
-                // Close any existing load more subscription for this relay
-                if (this.loadMoreSubscriptionIds[relayUrl]) {
-                    const closeSubscription = ["CLOSE", this.loadMoreSubscriptionIds[relayUrl]];
-                    try {
-                        this.websockets[relayUrl].send(JSON.stringify(closeSubscription));
-                        console.log(`Closed previous load more subscription for ${relayUrl}`);
-                    } catch (error) {
-                        console.warn(`Error closing previous subscription for ${relayUrl}:`, error);
-                    }
-                }
-                
-                const subscriptionId = "load-more-" + Math.random().toString(36).substr(2, 9);
-                this.loadMoreSubscriptionIds[relayUrl] = subscriptionId;
-                
-                const filters = {
-                    "kinds": [20000], // Only ephemeral events (location channels)
-                    "until": untilTimestamp,
-                    "limit": 500
-                };
-                
-                // Add geohash filter if one is active
-                if (this.geohashFilter) {
-                    // For geohash filtering, we need to request all events and filter client-side
-                    // since Nostr doesn't support tag filtering in the same way
-                    console.log(`Load more with geohash filter: ${this.geohashFilter}`);
-                }
-                
-                
-                const subscription = [
-                    "REQ",
-                    subscriptionId,
-                    filters
-                ];
-                
-                console.log(`Requesting more events from ${relayUrl} until ${untilTimestamp}:`, subscription);
-                console.log(`WebSocket state:`, this.websockets[relayUrl].readyState);
-                
-                try {
-                    this.websockets[relayUrl].send(JSON.stringify(subscription));
-                    console.log(`Successfully sent load more request to ${relayUrl}`);
-                } catch (error) {
-                    console.error(`Error sending load more request to ${relayUrl}:`, error);
-                }
-            }
 
 
-            closeAllLoadMoreSubscriptions() {
-                for (const relayUrl of this.relays) {
-                    if (this.loadMoreSubscriptionIds[relayUrl] && this.websockets[relayUrl] && this.websockets[relayUrl].readyState === WebSocket.OPEN) {
-                        const closeSubscription = ["CLOSE", this.loadMoreSubscriptionIds[relayUrl]];
-                        try {
-                            this.websockets[relayUrl].send(JSON.stringify(closeSubscription));
-                            console.log(`Closed load more subscription for ${relayUrl}`);
-                        } catch (error) {
-                            console.warn(`Error closing load more subscription for ${relayUrl}:`, error);
-                        }
-                    }
-                }
-                this.loadMoreSubscriptionIds = {};
-            }
+
 
             async connectToRelays() {
                 const noteContainer = document.getElementById('noteContainer');
@@ -1391,10 +1210,9 @@
                             if (Array.isArray(data)) {
                                 const [messageType, subId, eventData] = data;
                                 
-                                if (messageType === 'EVENT' && eventData && (subId === subscriptionId || (subId && subId.startsWith('load-more-')))) {
+                                if (messageType === 'EVENT' && eventData && subId === subscriptionId) {
                                     // Log all events for debugging
-                                    const isLoadMore = subId && subId.startsWith('load-more-');
-                                    console.log(`📨 Received event: ${eventData.id}, kind: ${eventData.kind}, content: "${eventData.content?.substring(0, 30)}...", loadMore: ${isLoadMore}`);
+                                    console.log(`📨 Received event: ${eventData.id}, kind: ${eventData.kind}, content: "${eventData.content?.substring(0, 30)}..."`);
                                     
                                     // Debug: Check for geohash tags in all events
                                     if (eventData.tags) {
@@ -1427,20 +1245,6 @@
                     // Show load more button after initial load
                     if (!this.initialLoadComplete) {
                         this.initialLoadComplete = true;
-                        this.showLoadMoreButton();
-                    }
-                } else if (messageType === 'EOSE' && subId && subId.startsWith('load-more-')) {
-                    console.log(`Load more EOSE received from ${relayUrl} for subscription ${subId}`);
-                    this.loadMoreRequestsCompleted++;
-                    
-                    // Check if all load more requests are complete
-                    if (this.loadMoreRequestsCompleted >= this.loadMoreRequestsSent) {
-                        this.isLoadingMore = false;
-                        this.updateLoadMoreButton();
-                        console.log(`All load more requests completed (${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent})`);
-                        console.log(`Total notes after load more: ${this.notes.length}`);
-                    } else {
-                        console.log(`Load more progress: ${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent}`);
                     }
                 } else if (messageType === 'NOTICE') {
                                     console.log(`Notice from ${relayUrl}:`, eventData);
@@ -2127,8 +1931,11 @@
                 
                 // Always zoom to global view regardless of notes
                 if (this.map) {
-                    this.map.setView([0, 0], 1);
-                    console.log('Zoomed to global view - center: [0, 0], zoom: 1');
+                    // Use a small delay to ensure map is ready
+                    setTimeout(() => {
+                        this.map.setView([0, 0], 1);
+                        console.log('Zoomed to global view - center: [0, 0], zoom: 1');
+                    }, 100);
                 } else {
                     console.error('Map not initialized when trying to zoom to global');
                 }
