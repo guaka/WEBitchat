@@ -1,22 +1,21 @@
 # WEBitchat
 
-A standalone real-time web-based visualizer for Bitchat activity over the Nostr protocol, displaying location-based messages on an interactive map.
+A standalone real-time web-based visualizer for Bitchat note over the Nostr protocol, displaying location-based messages on an interactive map.
 
 **Note**: This is an independent project and is not officially part of the Bitchat project.
 
 ## Overview
 
-WEBitchat is a single-page HTML application that connects to multiple Nostr relays to display Bitchat location channel messages (Kind 20000 events) in real-time. It provides both a map view and a chronological activity feed.
+WEBitchat is a single-page HTML application that connects to multiple Nostr relays to display Bitchat location channel messages (Kind 20000 events) in real-time. It provides both a map view and a chronological note feed.
 
 ## Features
 
 ### Core Functionality
 - **Real-time data**: Connects to multiple Nostr relays for live updates
 - **Interactive map**: Displays messages with geohash coordinates on a Leaflet map
-- **Activity feed**: Chronological list of all Bitchat messages
+- **Note feed**: Chronological list of all Bitchat messages
 - **Geohash visualization**: Shows geohash areas as rectangles on the map
 - **Filtering**: Filter by specific geohashes (e.g., "ey", "9q8yy")
-- **9q exclusion**: Toggle to hide the very active 9q area
 - **Load more**: Fetch historical messages from relays
 
 ### Map Features
@@ -29,7 +28,7 @@ WEBitchat is a single-page HTML application that connects to multiple Nostr rela
 ### Filtering & Search
 - **Geohash filter**: Type any geohash to see only messages from that area
 - **9q exclusion toggle**: Hide the very active 9q area to focus on other regions
-- **Real-time filtering**: Updates both map and activity list instantly
+- **Real-time filtering**: Updates both map and note list instantly
 - **Partial matching**: "ey" will match "ey", "9q8yy", etc.
 
 ## Technical Details
@@ -62,7 +61,7 @@ WEBitchat is a single-page HTML application that connects to multiple Nostr rela
 1. **Open the HTML file** in a web browser
 2. **Wait for initial load** - connects to relays and fetches recent messages
 3. **View on map** - messages appear as pin markers with geohash rectangles
-4. **Browse activity feed** - chronological list on the right side
+4. **Browse note feed** - chronological list on the right side
 
 ### Filtering
 1. **Filter by geohash**: Type "ey" in the filter box to see only that area
@@ -92,7 +91,7 @@ this.relays = [
 ### Load Limits
 - **Initial load**: 10,000 events per relay
 - **Load more**: 500 events per relay (1000 when 9q exclusion is active)
-- **Memory limit**: 10,000 activities kept in memory
+- **Memory limit**: 10,000 notes kept in memory
 
 ### Filtering Options
 - **Geohash filter**: Partial matching (case-insensitive)
@@ -129,7 +128,7 @@ this.relays = [
 ### Debug Information
 - **Console logging**: Detailed logs for all operations
 - **Relay status**: Shows connection status for each relay
-- **Activity counts**: Displays message counts per relay
+- **Note counts**: Displays message counts per relay
 - **Filter status**: Shows current filter settings
 
 ## Development

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://unpkg.com; connect-src 'self' wss: https:;">
-    <title>WEBitchat - Bitchat Nostr Activity Visualizer</title>
+    <title>WEBitchat - Bitchat Nostr Note Visualizer</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -43,7 +43,7 @@
             height: 100%;
         }
         
-        .activity-container {
+        .note-container {
             flex: 1;
             padding: 16px;
             overflow-y: auto;
@@ -67,7 +67,7 @@
             text-transform: none;
         }
         
-        .activity-item {
+        .note-item {
             background: #000000;
             border: 1px solid #00ff00;
             padding: 12px;
@@ -78,12 +78,12 @@
             font-family: 'Courier New', monospace;
         }
         
-        .activity-item:hover {
+        .note-item:hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 40px rgba(0,0,0,0.15);
         }
         
-        .activity-item::before {
+        .note-item::before {
             content: '';
             position: absolute;
             top: 0;
@@ -93,7 +93,7 @@
             background: linear-gradient(90deg, #8B5CF6, #F59E0B);
         }
         
-        .activity-header {
+        .note-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -102,7 +102,7 @@
             gap: 6px;
         }
         
-        .activity-type {
+        .note-type {
             font-weight: 600;
             font-family: 'Space Grotesk', sans-serif;
             color: #2c3e50;
@@ -114,7 +114,7 @@
             letter-spacing: -0.01em;
         }
         
-        .activity-time {
+        .note-time {
             color: #6c757d;
             font-size: 0.85rem;
             background: #f8f9fa;
@@ -124,14 +124,14 @@
             transition: all 0.2s ease;
         }
 
-        .activity-time:hover {
+        .note-time:hover {
             background: #e9ecef;
             color: #495057;
             transform: translateY(-1px);
         }
         
         
-        .activity-content {
+        .note-content {
             line-height: 1.6;
             color: #00ff00;
             font-size: 0.95rem;
@@ -169,40 +169,48 @@
             position: fixed;
             bottom: 20px;
             left: 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 8px;
             padding: 15px;
-            color: white;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
+            color: #00ff00;
+            text-align: left;
+            backdrop-filter: blur(5px);
+            border: 1px solid #00ff00;
             z-index: 1000;
             min-width: 250px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
             transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
         }
         
         .stats:hover {
-            background: rgba(255,255,255,0.15);
+            background: rgba(0, 0, 0, 0.95);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
         }
         
         .stats h3 {
             margin: 0 0 10px 0;
             font-size: 1.1rem;
             font-weight: 500;
+            color: #ff8800;
+            text-shadow: 0 0 5px rgba(255, 136, 0, 0.5);
         }
         
         .stats p {
             margin: 5px 0;
-            opacity: 0.9;
+            color: #00ff00;
+        }
+
+        .stats p strong {
+            color: #ff8800;
+            font-weight: bold;
         }
 
         .stats-section {
             margin-bottom: 15px;
             padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
+            border-bottom: 1px solid rgba(0, 255, 0, 0.3);
         }
 
         .stats-section:last-child {
@@ -244,13 +252,14 @@
         .relay-name {
             font-family: 'Courier New', monospace;
             font-size: 0.8rem;
-            opacity: 0.9;
+            color: #00ff00;
         }
 
         .relay-stats {
             margin-left: auto;
             font-size: 0.75rem;
-            opacity: 0.8;
+            color: #ff8800;
+            font-weight: bold;
         }
         
         .map-marker {
@@ -280,7 +289,7 @@
             font-family: 'Inter', sans-serif;
         }
         
-        .map-popup .activity-title {
+        .map-popup .note-title {
             font-weight: 600;
             color: #8B5CF6;
             margin-bottom: 8px;
@@ -326,7 +335,7 @@
             50% { opacity: 0.7; }
         }
         
-        .activity-new {
+        .note-new {
             animation: slideInFromTop 0.5s ease-out;
             border-left: 4px solid #10B981;
         }
@@ -656,7 +665,7 @@
             gap: 16px;
         }
 
-        .activity-type-indicator {
+        .note-type-indicator {
             display: flex;
             gap: 8px;
         }
@@ -714,7 +723,7 @@
                 min-height: 200px;
             }
             
-            .activity-container {
+            .note-container {
                 height: 60vh;
                 padding: 10px;
             }
@@ -723,11 +732,11 @@
                 font-size: 2rem;
             }
             
-            .activity-item {
+            .note-item {
                 padding: 15px;
             }
             
-            .activity-header {
+            .note-header {
                 flex-direction: column;
                 align-items: flex-start;
             }
@@ -739,12 +748,12 @@
         <div class="map-container">
             <div id="map"></div>
         </div>
-        <div class="activity-container">
+        <div class="note-container">
             <div class="container">
                 <div class="header-top-row">
                     <div class="header-title-group">
                         <h1>WEB<span style="text-transform: lowercase;">itchat</span></h1>
-                        <div class="activity-type-indicator">
+                        <div class="note-type-indicator">
                             <span class="small-kind-badge">Kind 20000</span>
                             <span class="small-bitchat-badge">Bitchat</span>
                         </div>
@@ -753,7 +762,7 @@
                     <!-- Bitchat Links -->
                     <div class="bitchat-links">
                         <a href="https://bitchat.free/" target="_blank" class="bitchat-link">🌐 Bitchat App</a>
-                        <a href="https://github.com/guaka/bitchat-nostr-activity/" target="_blank" class="bitchat-link">📱 GitHub</a>
+                        <a href="https://github.com/guaka/bitchat-nostr-note/" target="_blank" class="bitchat-link">📱 GitHub</a>
                     </div>
                 </div>
                 
@@ -769,8 +778,8 @@
                     </div>
                 </div>
                 
-                <div id="activityContainer">
-                    <div class="loading">Loading Bitchat activity from Nostr relays...</div>
+                <div id="noteContainer">
+                    <div class="loading">Loading Bitchat note from Nostr relays...</div>
                 </div>
                 
                 <!-- Load More Button -->
@@ -797,7 +806,7 @@
                     'wss://offchain.pub',
                     'wss://nostr21.com'
                 ];
-                this.activities = [];
+                this.notes = [];
                 this.map = null;
                 this.mapMarkers = [];
                 this.relayStatus = {};
@@ -830,8 +839,8 @@
             startStatsUpdateTimer() {
                 // Update stats every 5 seconds to refresh connection times
                 setInterval(() => {
-                    if (this.activities.length > 0) {
-                        this.displayStats(this.activities);
+                    if (this.notes.length > 0) {
+                        this.displayStats(this.notes);
                     }
                 }, 5000);
             }
@@ -852,31 +861,71 @@
                 const style = document.createElement('style');
                 style.textContent = `
                     .custom-map-tiles {
-                        filter: hue-rotate(280deg) saturate(1.2) brightness(0.9) contrast(1.1);
+                        filter: invert(1) hue-rotate(180deg) saturate(0.4) brightness(0.8) contrast(1.0);
                     }
                     .leaflet-container {
-                        background: linear-gradient(135deg, #8B5CF6 0%, #F59E0B 100%);
+                        background: #000000;
                     }
                     .leaflet-control-zoom a {
-                        background: rgba(255, 255, 255, 0.9);
-                        color: #8B5CF6;
-                        border: 1px solid rgba(139, 92, 246, 0.3);
-                        backdrop-filter: blur(10px);
+                        background: rgba(0, 0, 0, 0.9);
+                        color: #00ff00;
+                        border: 1px solid #00ff00;
+                        backdrop-filter: blur(5px);
+                        font-family: 'Courier New', monospace;
+                        font-weight: bold;
+                        width: 30px;
+                        height: 30px;
+                        line-height: 30px;
+                        text-align: center;
+                        font-size: 18px;
                     }
                     .leaflet-control-zoom a:hover {
-                        background: linear-gradient(135deg, #8B5CF6, #F59E0B);
-                        color: white;
+                        background: rgba(0, 255, 0, 0.2);
+                        color: #00ff00;
+                        box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+                    }
+                    .leaflet-control-zoom {
+                        border: 1px solid #00ff00;
+                        border-radius: 4px;
+                        background: rgba(0, 0, 0, 0.9);
+                    }
+                    .leaflet-control-zoom a:first-child {
+                        border-bottom: 1px solid #00ff00;
+                        border-radius: 4px 4px 0 0;
+                    }
+                    .leaflet-control-zoom a:last-child {
+                        border-radius: 0 0 4px 4px;
                     }
                     .leaflet-popup-content-wrapper {
-                        background: rgba(255, 255, 255, 0.95);
-                        backdrop-filter: blur(10px);
-                        border-radius: 12px;
-                        border: 1px solid rgba(139, 92, 246, 0.2);
-                        box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+                        background: rgba(0, 0, 0, 0.95);
+                        backdrop-filter: blur(5px);
+                        border-radius: 8px;
+                        border: 1px solid #00ff00;
+                        box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+                        color: #00ff00;
+                        font-family: 'Courier New', monospace;
                     }
                     .leaflet-popup-tip {
-                        background: rgba(255, 255, 255, 0.95);
-                        border: 1px solid rgba(139, 92, 246, 0.2);
+                        background: rgba(0, 0, 0, 0.95);
+                        border: 1px solid #00ff00;
+                    }
+                    .leaflet-popup-content {
+                        color: #00ff00;
+                        font-family: 'Courier New', monospace;
+                    }
+                    .leaflet-popup-content .note-title {
+                        color: #ff8800;
+                        font-weight: bold;
+                    }
+                    .leaflet-popup-content .popup-content {
+                        color: #00ff00;
+                    }
+                    .leaflet-popup-content .popup-time {
+                        color: #ff8800;
+                    }
+                    .leaflet-popup-content .popup-location {
+                        color: #00ff00;
+                        font-weight: bold;
                     }
                 `;
                 document.head.appendChild(style);
@@ -892,8 +941,8 @@
                     this.geohashFilter = e.target.value.trim().toLowerCase();
                     this.updateHash();
                     this.updateFilterStatus();
-                    this.displayActivities(this.activities);
-                    this.plotActivitiesOnMap(this.activities);
+                    this.displayActivities(this.notes);
+                    this.plotActivitiesOnMap(this.notes);
                     
                     // If filtering by a specific geohash, show its rectangle
                     if (this.geohashFilter && this.isGeohash(this.geohashFilter)) {
@@ -906,8 +955,8 @@
                     this.geohashFilter = '';
                     this.updateHash();
                     this.updateFilterStatus();
-                    this.displayActivities(this.activities);
-                    this.plotActivitiesOnMap(this.activities);
+                    this.displayActivities(this.notes);
+                    this.plotActivitiesOnMap(this.notes);
                     this.zoomToShowAllActivities();
                 });
 
@@ -922,8 +971,8 @@
                 // Listen for hash changes (when user manually changes URL)
                 window.addEventListener('hashchange', () => {
                     this.loadFilterFromHash();
-                    this.displayActivities(this.activities);
-                    this.plotActivitiesOnMap(this.activities);
+                    this.displayActivities(this.notes);
+                    this.plotActivitiesOnMap(this.notes);
                     
                     // If filtering by a specific geohash, show its rectangle
                     if (this.geohashFilter && this.isGeohash(this.geohashFilter)) {
@@ -954,8 +1003,8 @@
                             document.getElementById('geohashFilter').value = geohash;
                             this.updateHash();
                             this.updateFilterStatus();
-                            this.displayActivities(this.activities);
-                            this.plotActivitiesOnMap(this.activities);
+                            this.displayActivities(this.notes);
+                            this.plotActivitiesOnMap(this.notes);
                             if (this.isGeohash(this.geohashFilter)) {
                                 this.highlightGeohashArea(this.geohashFilter);
                             }
@@ -965,13 +1014,13 @@
             }
 
             setupDatetimeClickHandlers() {
-                document.querySelectorAll('.activity-time').forEach(timeElement => {
+                document.querySelectorAll('.note-time').forEach(timeElement => {
                     timeElement.addEventListener('click', (e) => {
-                        const activityId = e.target.dataset.activityId;
-                        if (activityId) {
-                            const activity = this.activities.find(a => a.id === activityId);
-                            if (activity) {
-                                this.showNoteDetailsModal(activity);
+                        const noteId = e.target.dataset.noteId;
+                        if (noteId) {
+                            const note = this.notes.find(a => a.id === noteId);
+                            if (note) {
+                                this.showNoteDetailsModal(note);
                             }
                         }
                     });
@@ -990,8 +1039,8 @@
                             const profile = await this.requestUserProfile(relayUrl, pubkey);
                             if (profile) {
                                 this.userProfiles[pubkey] = profile;
-                                // Re-render activities to show the new username
-                                this.displayActivities(this.activities);
+                                // Re-render notes to show the new username
+                                this.displayActivities(this.notes);
                                 return profile;
                             }
                         }
@@ -1086,14 +1135,14 @@
             }
 
             getFilteredActivities() {
-                let filtered = this.activities;
+                let filtered = this.notes;
                 
                 // Apply geohash filter
                 if (this.geohashFilter) {
-                    filtered = filtered.filter(activity => {
-                        if (!activity.tags) return false;
+                    filtered = filtered.filter(note => {
+                        if (!note.tags) return false;
                         
-                        return activity.tags.some(tag => 
+                        return note.tags.some(tag => 
                             tag[0] === 'g' && 
                             tag[1] && 
                             tag[1].toLowerCase().includes(this.geohashFilter)
@@ -1139,14 +1188,14 @@
                 this.updateLoadMoreButton();
                 
                 console.log('Loading more notes...');
-                console.log('Current activities count:', this.activities.length);
+                console.log('Current notes count:', this.notes.length);
                 
-                // Find the oldest activity to use as the "until" parameter
-                const oldestActivity = this.activities.reduce((oldest, current) => 
-                    current.created_at < oldest.created_at ? current : oldest, this.activities[0]);
+                // Find the oldest note to use as the "until" parameter
+                const oldestNote = this.notes.reduce((oldest, current) => 
+                    current.created_at < oldest.created_at ? current : oldest, this.notes[0]);
                 
-                const untilTimestamp = oldestActivity ? oldestActivity.created_at - 1 : Math.floor(Date.now() / 1000);
-                console.log('Oldest activity timestamp:', oldestActivity?.created_at, 'Until timestamp:', untilTimestamp);
+                const untilTimestamp = oldestNote ? oldestNote.created_at - 1 : Math.floor(Date.now() / 1000);
+                console.log('Oldest note timestamp:', oldestNote?.created_at, 'Until timestamp:', untilTimestamp);
                 
                 // Clear previous load more subscription IDs
                 this.closeAllLoadMoreSubscriptions();
@@ -1246,8 +1295,8 @@
             }
 
             async connectToRelays() {
-                const activityContainer = document.getElementById('activityContainer');
-                activityContainer.innerHTML = '<div class="loading">Connecting to Bitchat Nostr relays...</div>';
+                const noteContainer = document.getElementById('noteContainer');
+                noteContainer.innerHTML = '<div class="loading">Connecting to Bitchat Nostr relays...</div>';
 
                 for (const relayUrl of this.relays) {
                     this.connectToRelay(relayUrl);
@@ -1262,7 +1311,7 @@
                     const ws = new WebSocket(relayUrl);
                     this.websockets[relayUrl] = ws;
                     
-                    const subscriptionId = "bitchat-activity-" + Math.random().toString(36).substr(2, 9);
+                    const subscriptionId = "bitchat-note-" + Math.random().toString(36).substr(2, 9);
                     this.subscriptionIds[relayUrl] = subscriptionId;
 
                     ws.onopen = () => {
@@ -1308,22 +1357,22 @@
                                         }
                                     }
                                     
-                                    // Check if this is Bitchat activity
-                                    if (this.isBitchatActivity(eventData)) {
-                                        console.log(`Adding Bitchat activity from ${relayUrl}:`, eventData);
-                                        this.addNewActivity(eventData);
-                                        this.updateRelayStatus(relayUrl, 'connected', this.activities.length);
+                                    // Check if this is Bitchat note
+                                    if (this.isBitchatNote(eventData)) {
+                                        console.log(`Adding Bitchat note from ${relayUrl}:`, eventData);
+                                        this.addNewNote(eventData);
+                                        this.updateRelayStatus(relayUrl, 'connected', this.notes.length);
                                     } else {
                                         // Debug: Log why event was rejected
-                                        console.log(`Event ${eventData.id} rejected as Bitchat activity. Content:`, eventData.content?.substring(0, 100));
+                                        console.log(`Event ${eventData.id} rejected as Bitchat note. Content:`, eventData.content?.substring(0, 100));
                                         console.log(`Tags:`, eventData.tags);
                                     }
                 } else if (messageType === 'EOSE' && subId === subscriptionId) {
                     console.log(`EOSE received from ${relayUrl}, initial load complete`);
-                    this.updateRelayStatus(relayUrl, 'connected', this.activities.length);
+                    this.updateRelayStatus(relayUrl, 'connected', this.notes.length);
                     
-                    if (this.activities.length > 0) {
-                        this.displayStats(this.activities);
+                    if (this.notes.length > 0) {
+                        this.displayStats(this.notes);
                     }
                     
                     // Show load more button after initial load
@@ -1340,7 +1389,7 @@
                         this.isLoadingMore = false;
                         this.updateLoadMoreButton();
                         console.log(`All load more requests completed (${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent})`);
-                        console.log(`Total activities after load more: ${this.activities.length}`);
+                        console.log(`Total notes after load more: ${this.notes.length}`);
                     } else {
                         console.log(`Load more progress: ${this.loadMoreRequestsCompleted}/${this.loadMoreRequestsSent}`);
                     }
@@ -1373,7 +1422,7 @@
                 }
             }
 
-            isBitchatActivity(event) {
+            isBitchatNote(event) {
                 // Only accept Kind 20000 events (ephemeral events for location channels)
                 if (event.kind !== 20000) {
                     return false;
@@ -1407,23 +1456,23 @@
                 return true;
             }
 
-            addNewActivity(activity) {
-                // Check if activity already exists
-                if (this.activities.find(a => a.id === activity.id)) {
-                    console.log(`Activity ${activity.id} already exists, skipping`);
+            addNewNote(note) {
+                // Check if note already exists
+                if (this.notes.find(a => a.id === note.id)) {
+                    console.log(`Note ${note.id} already exists, skipping`);
                     return;
                 }
 
-                this.activities.push(activity);
-                this.activities.sort((a, b) => b.created_at - a.created_at);
+                this.notes.push(note);
+                this.notes.sort((a, b) => b.created_at - a.created_at);
                 
-                if (this.activities.length > 10000) {
-                    this.activities = this.activities.slice(0, 10000);
+                if (this.notes.length > 10000) {
+                    this.notes = this.notes.slice(0, 10000);
                 }
 
                 // Fetch user profile if we don't have it
-                if (activity.pubkey && !this.userProfiles[activity.pubkey]) {
-                    this.fetchUserProfile(activity.pubkey);
+                if (note.pubkey && !this.userProfiles[note.pubkey]) {
+                    this.fetchUserProfile(note.pubkey);
                 }
 
                 // Show live indicator
@@ -1435,68 +1484,68 @@
                     }, 3000);
                 }
 
-                this.displayActivities(this.activities);
-                this.plotActivitiesOnMap(this.activities);
+                this.displayActivities(this.notes);
+                this.plotActivitiesOnMap(this.notes);
                 
-                // Add visual effect to the new activity
+                // Add visual effect to the new note
                 setTimeout(() => {
-                    const activityElement = document.querySelector(`[data-activity-id="${activity.id}"]`);
-                    if (activityElement) {
-                        activityElement.classList.add('activity-new');
+                    const noteElement = document.querySelector(`[data-note-id="${note.id}"]`);
+                    if (noteElement) {
+                        noteElement.classList.add('note-new');
                         setTimeout(() => {
-                            activityElement.classList.remove('activity-new');
+                            noteElement.classList.remove('note-new');
                         }, 500);
                     }
                 }, 100);
                 
-                console.log(`Added new Bitchat activity: ${activity.id}, total activities: ${this.activities.length}`);
+                console.log(`Added new Bitchat note: ${note.id}, total notes: ${this.notes.length}`);
             }
 
-            displayActivities(activities) {
-                const activityContainer = document.getElementById('activityContainer');
+            displayActivities(notes) {
+                const noteContainer = document.getElementById('noteContainer');
                 const filteredActivities = this.getFilteredActivities();
                 
                 if (filteredActivities.length === 0) {
                     if (this.geohashFilter) {
-                        activityContainer.innerHTML = `<div class="loading">No activities found for geohash "${this.geohashFilter}". Try a different geohash or clear the filter.</div>`;
+                        noteContainer.innerHTML = `<div class="loading">No notes found for geohash "${this.geohashFilter}". Try a different geohash or clear the filter.</div>`;
                     } else {
-                        activityContainer.innerHTML = '<div class="loading">No Bitchat activity found. Check the browser console for debug information.</div>';
+                        noteContainer.innerHTML = '<div class="loading">No Bitchat note found. Check the browser console for debug information.</div>';
                     }
                     return;
                 }
 
-                const loadingDiv = activityContainer.querySelector('.loading');
+                const loadingDiv = noteContainer.querySelector('.loading');
                 if (loadingDiv) {
                     loadingDiv.remove();
                 }
 
                 const sortedActivities = [...filteredActivities].sort((a, b) => b.created_at - a.created_at);
-                activityContainer.innerHTML = '';
+                noteContainer.innerHTML = '';
 
-                sortedActivities.forEach(activity => {
-                    console.log('Processing activity:', activity);
-                    const activityDiv = document.createElement('div');
-                    activityDiv.className = 'activity-item';
-                    activityDiv.setAttribute('data-activity-id', activity.id);
+                sortedActivities.forEach(note => {
+                    console.log('Processing note:', note);
+                    const noteDiv = document.createElement('div');
+                    noteDiv.className = 'note-item';
+                    noteDiv.setAttribute('data-note-id', note.id);
                     
                     try {
-                        const timestamp = new Date(activity.created_at * 1000);
+                        const timestamp = new Date(note.created_at * 1000);
                         const timeString = this.formatTime(timestamp);
                         const relativeTime = this.getRelativeTime(timestamp);
                         
-                        const renderedHtml = this.renderActivity(activity, timeString, relativeTime);
+                        const renderedHtml = this.renderNote(note, timeString, relativeTime);
                         
                         if (renderedHtml && typeof renderedHtml === 'string' && renderedHtml.trim().length > 0) {
-                            activityDiv.innerHTML = renderedHtml;
+                            noteDiv.innerHTML = renderedHtml;
                         } else {
-                            activityDiv.innerHTML = this.renderFallbackActivity(activity, timeString, relativeTime);
+                            noteDiv.innerHTML = this.renderFallbackNote(note, timeString, relativeTime);
                         }
                     } catch (error) {
-                        console.error('Error rendering activity:', error, activity);
-                        activityDiv.innerHTML = this.renderFallbackActivity(activity, timeString, relativeTime);
+                        console.error('Error rendering note:', error, note);
+                        noteDiv.innerHTML = this.renderFallbackNote(note, timeString, relativeTime);
                     }
                     
-                    activityContainer.appendChild(activityDiv);
+                    noteContainer.appendChild(noteDiv);
                 });
                 
                 // Set up click handlers for geohash tags
@@ -1506,14 +1555,14 @@
                 this.setupDatetimeClickHandlers();
             }
 
-            renderActivity(activity, timeString, relativeTime) {
-                const content = this.escapeHtml(activity.content || '');
+            renderNote(note, timeString, relativeTime) {
+                const content = this.escapeHtml(note.content || '');
                 const processedContent = content.replace(/\n/g, '<br>');
                 
                 // Extract geohash tags
                 const geohashTags = [];
-                if (activity.tags) {
-                    activity.tags.forEach(tag => {
+                if (note.tags) {
+                    note.tags.forEach(tag => {
                         if (tag[0] === 'g' && tag[1]) {
                             geohashTags.push(tag[1]);
                         }
@@ -1526,55 +1575,55 @@
                     </div>
                 ` : '';
                 
-                const activityType = this.getActivityType(activity);
+                const noteType = this.getNoteType(note);
                 
                 // Get username from profile cache
-                const profile = this.userProfiles[activity.pubkey];
-                const username = profile ? profile.name : (activity.pubkey ? activity.pubkey.substring(0, 8) + '...' : 'Unknown');
+                const profile = this.userProfiles[note.pubkey];
+                const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
                 
                 // Display content as-is for location channel messages
                 let contentHtml = processedContent;
                 
                 return `
-                    <div class="activity-header">
+                    <div class="note-header">
                         <div style="display: flex; gap: 8px; align-items: center; flex: 1;">
-                            ${activityType ? `<span class="activity-type">${activityType}</span>` : ''}
-                            <span class="activity-username" style="color: #ff8800; font-weight: 600; font-size: 0.9rem;">@${username}</span>
+                            ${noteType ? `<span class="note-type">${noteType}</span>` : ''}
+                            <span class="note-username" style="color: #ff8800; font-weight: 600; font-size: 0.9rem;">@${username}</span>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="activity-time" title="${timeString}" data-activity-id="${activity.id}">${relativeTime}</span>
+                            <span class="note-time" title="${timeString}" data-note-id="${note.id}">${relativeTime}</span>
                         </div>
                     </div>
-                    <div class="activity-content">${contentHtml}</div>
+                    <div class="note-content">${contentHtml}</div>
                     ${geohashHtml}
                 `;
             }
 
-            getActivityType(activity) {
-                // All activities are Kind 20000 (ephemeral events for location channels)
+            getNoteType(note) {
+                // All notes are Kind 20000 (ephemeral events for location channels)
                 return '';
             }
 
-            renderFallbackActivity(activity, timeString, relativeTime) {
-                const profile = this.userProfiles[activity.pubkey];
-                const username = profile ? profile.name : (activity.pubkey ? activity.pubkey.substring(0, 8) + '...' : 'Unknown');
+            renderFallbackNote(note, timeString, relativeTime) {
+                const profile = this.userProfiles[note.pubkey];
+                const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
                 
                 return `
-                    <div class="activity-header">
+                    <div class="note-header">
                         <div style="display: flex; gap: 8px; align-items: center; flex: 1;">
-                            <span class="activity-type">Unknown Activity</span>
-                            <span class="activity-username" style="color: #ff8800; font-weight: 600; font-size: 0.9rem;">@${username}</span>
+                            <span class="note-type">Unknown Note</span>
+                            <span class="note-username" style="color: #ff8800; font-weight: 600; font-size: 0.9rem;">@${username}</span>
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="activity-time" title="${timeString}">${relativeTime}</span>
-                            <span class="activity-kind">Kind ${activity.kind || 'Unknown'}</span>
+                            <span class="note-time" title="${timeString}">${relativeTime}</span>
+                            <span class="note-kind">Kind ${note.kind || 'Unknown'}</span>
                         </div>
                     </div>
-                    <div class="activity-content">${this.escapeHtml(activity.content || 'No content')}</div>
+                    <div class="note-content">${this.escapeHtml(note.content || 'No content')}</div>
                 `;
             }
 
-            displayStats(activities) {
+            displayStats(notes) {
                 let statsDiv = document.getElementById('statsBox');
                 
                 if (!statsDiv) {
@@ -1586,20 +1635,20 @@
                 
                 const filteredActivities = this.getFilteredActivities();
                 
-                // Count activities with geo information
+                // Count notes with geo information
                 let geoActivitiesCount = 0;
-                filteredActivities.forEach(activity => {
-                    const geo = this.extractGeoLocation(activity);
+                filteredActivities.forEach(note => {
+                    const geo = this.extractGeoLocation(note);
                     if (geo) {
                         geoActivitiesCount++;
                     }
                 });
 
-                // Count by activity type
-                const activityTypes = {};
-                filteredActivities.forEach(activity => {
-                    const type = this.getActivityType(activity);
-                    activityTypes[type] = (activityTypes[type] || 0) + 1;
+                // Count by note type
+                const noteTypes = {};
+                filteredActivities.forEach(note => {
+                    const type = this.getNoteType(note);
+                    noteTypes[type] = (noteTypes[type] || 0) + 1;
                 });
 
                 // Generate relay status HTML
@@ -1610,7 +1659,7 @@
                     
                     let statsText = '';
                     if (status.notesCount > 0) {
-                        statsText = `${status.notesCount} activities`;
+                        statsText = `${status.notesCount} notes`;
                     }
                     
                     // Calculate connection time more accurately
@@ -1639,25 +1688,25 @@
                     `;
                 }).join('');
                 
-                const activityTypesHtml = Object.entries(activityTypes)
+                const noteTypesHtml = Object.entries(noteTypes)
                     .sort(([,a], [,b]) => b - a)
                     .slice(0, 5)
                     .map(([type, count]) => `<div>${type}: ${count}</div>`)
                     .join('');
                 
-                const totalActivities = this.activities.length;
+                const totalActivities = this.notes.length;
                 const filteredCount = filteredActivities.length;
                 
                 statsDiv.innerHTML = `
                     <div class="stats-section">
                         <h3>📊 Bitchat Statistics</h3>
-                        <p><strong>${filteredCount}</strong> ${this.geohashFilter ? 'filtered' : 'total'} activities</p>
-                        <p><strong>${geoActivitiesCount}</strong> activities with geo info</p>
-                        ${this.geohashFilter ? `<p><em>Filtered from ${totalActivities} total activities</em></p>` : ''}
+                        <p><strong>${filteredCount}</strong> ${this.geohashFilter ? 'filtered' : 'total'} notes</p>
+                        <p><strong>${geoActivitiesCount}</strong> notes with geo info</p>
+                        ${this.geohashFilter ? `<p><em>Filtered from ${totalActivities} total notes</em></p>` : ''}
                     </div>
                     <div class="stats-section">
-                        <h3>📈 Activity Types</h3>
-                        ${activityTypesHtml}
+                        <h3>📈 Note Types</h3>
+                        ${noteTypesHtml}
                     </div>
                     <div class="stats-section">
                         <h3>🌐 Relays</h3>
@@ -1689,13 +1738,13 @@
                 return date.toLocaleDateString();
             }
 
-            extractGeoLocation(activity) {
+            extractGeoLocation(note) {
                 let lat = null;
                 let lng = null;
                 let location = null;
                 
-                if (activity.tags) {
-                    for (const tag of activity.tags) {
+                if (note.tags) {
+                    for (const tag of note.tags) {
                         if (tag[0] === 'g' && tag[1]) {
                             const coordMatch = tag[1].match(/^(-?\d+\.?\d*),(-?\d+\.?\d*)$/);
                             if (coordMatch) {
@@ -1819,7 +1868,7 @@
                 }
             }
 
-            plotActivitiesOnMap(activities) {
+            plotActivitiesOnMap(notes) {
                 this.mapMarkers.forEach(marker => this.map.removeLayer(marker));
                 this.mapMarkers = [];
                 
@@ -1830,18 +1879,18 @@
                 const geoActivities = [];
                 const filteredActivities = this.getFilteredActivities();
                 
-                // Collect unique geohashes from filtered activities
+                // Collect unique geohashes from filtered notes
                 const uniqueGeohashes = new Set();
                 
-                filteredActivities.forEach(activity => {
-                    const geo = this.extractGeoLocation(activity);
+                filteredActivities.forEach(note => {
+                    const geo = this.extractGeoLocation(note);
                     if (geo) {
-                        geoActivities.push({ activity, geo });
-                        console.log(`Found geo activity: ${geo.location} (${geo.lat}, ${geo.lng}) - Kind ${activity.kind}`);
+                        geoActivities.push({ note, geo });
+                        console.log(`Found geo note: ${geo.location} (${geo.lat}, ${geo.lng}) - Kind ${note.kind}`);
                         
                         // Extract geohash from tags
-                        if (activity.tags) {
-                            activity.tags.forEach(tag => {
+                        if (note.tags) {
+                            note.tags.forEach(tag => {
                                 if (tag[0] === 'g' && tag[1] && this.isGeohash(tag[1])) {
                                     uniqueGeohashes.add(tag[1]);
                                 }
@@ -1850,7 +1899,7 @@
                     }
                 });
                 
-                console.log(`Found ${geoActivities.length} activities with geo-location data out of ${filteredActivities.length} filtered activities`);
+                console.log(`Found ${geoActivities.length} notes with geo-location data out of ${filteredActivities.length} filtered notes`);
                 console.log(`Found ${uniqueGeohashes.size} unique geohashes:`, Array.from(uniqueGeohashes));
                 
                 // Plot geohash rectangles
@@ -1860,7 +1909,7 @@
                     return;
                 }
                 
-                geoActivities.forEach(({ activity, geo }, index) => {
+                geoActivities.forEach(({ note, geo }, index) => {
                     const marker = L.marker([geo.lat, geo.lng], {
                         icon: L.divIcon({
                             className: 'map-marker',
@@ -1870,14 +1919,14 @@
                         })
                     });
                     
-                    const activityType = this.getActivityType(activity);
-                    const profile = this.userProfiles[activity.pubkey];
-                    const username = profile ? profile.name : (activity.pubkey ? activity.pubkey.substring(0, 8) + '...' : 'Unknown');
+                    const noteType = this.getNoteType(note);
+                    const profile = this.userProfiles[note.pubkey];
+                    const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
                     
-                    // Extract geohash from activity tags for clickable link
+                    // Extract geohash from note tags for clickable link
                     let geohashLink = '';
-                    if (activity.tags) {
-                        const geohashTag = activity.tags.find(tag => tag[0] === 'g' && tag[1] && this.isGeohash(tag[1]));
+                    if (note.tags) {
+                        const geohashTag = note.tags.find(tag => tag[0] === 'g' && tag[1] && this.isGeohash(tag[1]));
                         if (geohashTag) {
                             geohashLink = `<div class="popup-location" style="cursor: pointer; color: #8B5CF6; font-weight: 600;" onclick="window.bitchatVisualizer.filterByGeohash('${geohashTag[1]}')">📍 #${geohashTag[1]}</div>`;
                         }
@@ -1889,9 +1938,9 @@
                     
                     const popupContent = `
                         <div class="map-popup">
-                            <div class="activity-title">@${username}</div>
-                            <div class="popup-content">${this.escapeHtml(activity.content?.substring(0, 100) || 'No content')}${activity.content?.length > 100 ? '...' : ''}</div>
-                            <div class="popup-time">${this.getRelativeTime(new Date(activity.created_at * 1000))}</div>
+                            <div class="note-title">@${username}</div>
+                            <div class="popup-content">${this.escapeHtml(note.content?.substring(0, 100) || 'No content')}${note.content?.length > 100 ? '...' : ''}</div>
+                            <div class="popup-time">${this.getRelativeTime(new Date(note.created_at * 1000))}</div>
                             ${geohashLink}
                         </div>
                     `;
@@ -1901,7 +1950,7 @@
                     this.mapMarkers.push(marker);
                 });
                 
-                console.log(`Plotted ${geoActivities.length} geo-located activities on map`);
+                console.log(`Plotted ${geoActivities.length} geo-located notes on map`);
             }
 
             plotGeohashRectangles(geohashes) {
@@ -1922,7 +1971,7 @@
                         // Add popup with geohash info
                         const popupContent = `
                             <div class="map-popup">
-                                <div class="activity-title">Geohash Area</div>
+                                <div class="note-title">Geohash Area</div>
                                 <div class="popup-content"><strong>${geohash}</strong></div>
                                 <div class="popup-location">
                                     Bounds: ${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)} to ${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}
@@ -1960,7 +2009,7 @@
                     // Add popup with geohash info
                     const popupContent = `
                         <div class="map-popup">
-                            <div class="activity-title">Filtered Geohash Area</div>
+                            <div class="note-title">Filtered Geohash Area</div>
                             <div class="popup-content"><strong>${geohash}</strong></div>
                             <div class="popup-location">
                                 Bounds: ${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)} to ${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}
@@ -1987,10 +2036,10 @@
                 this.geohashRectangles.forEach(rect => this.map.removeLayer(rect));
                 this.geohashRectangles = [];
                 
-                // Get all activities with geo data
+                // Get all notes with geo data
                 const geoActivities = [];
-                this.activities.forEach(activity => {
-                    const geo = this.extractGeoLocation(activity);
+                this.notes.forEach(note => {
+                    const geo = this.extractGeoLocation(note);
                     if (geo) {
                         geoActivities.push([geo.lat, geo.lng]);
                     }
@@ -2003,17 +2052,17 @@
                         group.addLayer(L.marker(coord));
                     });
                     
-                    // Fit the map to show all activities
+                    // Fit the map to show all notes
                     this.map.fitBounds(group.getBounds().pad(0.1), { 
                         padding: [20, 20],
-                        maxZoom: 10 // Don't zoom in too much when showing all activities
+                        maxZoom: 10 // Don't zoom in too much when showing all notes
                     });
                     
-                    console.log(`Zoomed to show all ${geoActivities.length} activities`);
+                    console.log(`Zoomed to show all ${geoActivities.length} notes`);
                 } else {
-                    // If no geo activities, zoom to world view
+                    // If no geo notes, zoom to world view
                     this.map.setView([0, 0], 2);
-                    console.log('No geo activities found, zoomed to world view');
+                    console.log('No geo notes found, zoomed to world view');
                 }
             }
 
@@ -2032,8 +2081,8 @@
                 this.updateFilterStatus();
                 
                 // Update display and map
-                this.displayActivities(this.activities);
-                this.plotActivitiesOnMap(this.activities);
+                this.displayActivities(this.notes);
+                this.plotActivitiesOnMap(this.notes);
                 
                 // Highlight the geohash area on map
                 if (this.isGeohash(this.geohashFilter)) {
@@ -2043,7 +2092,7 @@
                 console.log(`Filtered by geohash: ${geohash}`);
             }
 
-            showNoteDetailsModal(activity) {
+            showNoteDetailsModal(note) {
                 // Create modal overlay
                 const modalOverlay = document.createElement('div');
                 modalOverlay.className = 'modal-overlay';
@@ -2054,11 +2103,11 @@
                 };
 
                 // Get user profile
-                const profile = this.userProfiles[activity.pubkey];
-                const username = profile ? profile.name : (activity.pubkey ? activity.pubkey.substring(0, 8) + '...' : 'Unknown');
+                const profile = this.userProfiles[note.pubkey];
+                const username = profile ? profile.name : (note.pubkey ? note.pubkey.substring(0, 8) + '...' : 'Unknown');
 
                 // Format timestamp
-                const timestamp = new Date(activity.created_at * 1000);
+                const timestamp = new Date(note.created_at * 1000);
                 const timeString = timestamp.toLocaleString('en-US', {
                     year: 'numeric',
                     month: 'short',
@@ -2070,8 +2119,8 @@
 
                 // Extract geohash tags
                 const geohashTags = [];
-                if (activity.tags) {
-                    activity.tags.forEach(tag => {
+                if (note.tags) {
+                    note.tags.forEach(tag => {
                         if (tag[0] === 'g' && tag[1]) {
                             geohashTags.push(tag[1]);
                         }
@@ -2089,7 +2138,7 @@
                     
                     <div class="modal-section">
                         <div class="modal-section-title">Content</div>
-                        <div class="modal-content-text">${this.escapeHtml(activity.content || 'No content')}</div>
+                        <div class="modal-content-text">${this.escapeHtml(note.content || 'No content')}</div>
                     </div>
                     
                     <div class="modal-section">
@@ -2100,7 +2149,7 @@
                         </div>
                         <div class="modal-field">
                             <div class="modal-field-label">Public Key</div>
-                            <div class="modal-field-value">${activity.pubkey || 'Unknown'}</div>
+                            <div class="modal-field-value">${note.pubkey || 'Unknown'}</div>
                         </div>
                     </div>
                     
@@ -2108,11 +2157,11 @@
                         <div class="modal-section-title">Event Details</div>
                         <div class="modal-field">
                             <div class="modal-field-label">Event ID</div>
-                            <div class="modal-field-value">${activity.id || 'Unknown'}</div>
+                            <div class="modal-field-value">${note.id || 'Unknown'}</div>
                         </div>
                         <div class="modal-field">
                             <div class="modal-field-label">Kind</div>
-                            <div class="modal-field-value">${activity.kind || 'Unknown'}</div>
+                            <div class="modal-field-value">${note.kind || 'Unknown'}</div>
                         </div>
                         <div class="modal-field">
                             <div class="modal-field-label">Created At</div>
@@ -2129,11 +2178,11 @@
                     </div>
                     ` : ''}
                     
-                    ${activity.tags && activity.tags.length > 0 ? `
+                    ${note.tags && note.tags.length > 0 ? `
                     <div class="modal-section">
                         <div class="modal-section-title">All Tags</div>
                         <div class="modal-field">
-                            <div class="modal-field-value">${JSON.stringify(activity.tags, null, 2)}</div>
+                            <div class="modal-field-value">${JSON.stringify(note.tags, null, 2)}</div>
                         </div>
                     </div>
                     ` : ''}
@@ -2144,8 +2193,8 @@
             }
 
             displayError(message) {
-                const activityContainer = document.getElementById('activityContainer');
-                activityContainer.innerHTML = `<div class="error">${message}</div>`;
+                const noteContainer = document.getElementById('noteContainer');
+                noteContainer.innerHTML = `<div class="error">${message}</div>`;
             }
 
             escapeHtml(text) {
